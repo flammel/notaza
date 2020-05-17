@@ -12,5 +12,8 @@ created: 2020-05-15 18:13
 ## Backlinks
 
 * [Index](./index.md)
+    * Lorem Ipsum
+        * [Banana](./banana.md)
+        * Dolor sit amed
 
 <!-- notaza backlinks end -->
