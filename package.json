@@ -1,0 +1,25 @@
+{
+  "name": "notaza",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Florian Lammel",
+  "license": "MIT",
+  "dependencies": {
+    "remark": "^12.0.0",
+    "remark-cli": "^8.0.0",
+    "remark-frontmatter": "^2.0.0",
+    "remark-html": "^11.0.2",
+    "remark-lint": "^7.0.0",
+    "remark-lint-unordered-list-marker-style": "^2.0.0",
+    "remark-rehype": "^6.0.0",
+    "to-vfile": "^6.1.0",
+    "unist-builder": "^2.0.3",
+    "unist-util-visit-parents": "^3.0.2",
+    "vfile-reporter": "^6.0.1",
+    "yaml": "^1.9.2"
+  }
+}
