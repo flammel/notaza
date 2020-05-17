@@ -1,0 +1,12 @@
+@mixin font() {
+    color: $font-color;
+    font-family: sans-serif;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+$page-border-color: rgba(0, 40, 100, 0.12);
+$font-color: #383838;
+$light-blue: #f5f7fb;
+$darker-blue: rgba(70, 127, 207, 0.06);
+$dark-blue: #467fcf;
+$internal-link-color: #007bff;

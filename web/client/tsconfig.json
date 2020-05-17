@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist/",
+        "sourceMap": true,
+        "module": "esnext",
+        "target": "es2019",
+        "strict": true,
+        "lib": ["dom", "es2020.string", "es2019", "DOM.Iterable"],
+        "moduleResolution": "node"
+    }
+}

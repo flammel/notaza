@@ -1,0 +1,149 @@
+@import './styles/variables.scss';
+
+.page {
+    margin: 1rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    border: 1px solid $page-border-color;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    background: #fff;
+    border-radius: 3px;
+    width: 50rem;
+
+    &__header {
+        display: flex;
+        flex-direction: row;
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: bold;
+            flex-grow: 1;
+
+            input {
+                border: 0;
+                padding: 0;
+                font-size: 2rem;
+                font-weight: bold;
+                width: 100%;
+                &:focus {
+                    outline: none;
+                }
+                &:disabled {
+                    background: #fff;
+                }
+            }
+
+            a {
+                color: $font-color;
+            }
+        }
+
+        .date-link {
+            padding: 0 0.5rem;
+            color: $font-color;
+        }
+
+        button {
+            border: none;
+            background: #fff;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+    }
+
+    &__actions {
+        position: relative;
+        .page__action-list {
+            display: none;
+            button {
+                @include font;
+                padding: 0.5rem;
+                display: block;
+                width: 100%;
+                text-align: left;
+                &:hover {
+                    background: $page-border-color;
+                }
+            }
+        }
+        button {
+            cursor: pointer;
+        }
+        &--open {
+            .page__action-list {
+                display: block;
+                position: absolute;
+                right: 0;
+                top: calc(100% - 0.5rem);
+                width: 5rem;
+                border: 1px solid $page-border-color;
+                border-radius: 3px;
+                padding: 0.5rem;
+                background: #fff;
+                z-index: 10;
+            }
+        }
+    }
+
+    &--raw {
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+        }
+        button {
+            @include font;
+            background: $darker-blue;
+            border: 1px solid $dark-blue;
+            border-radius: 3px;
+            padding: 0.25rem 1rem;
+            margin-top: 1rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+            color: $internal-link-color;
+        }
+    }
+
+    .blocks {
+        margin-top: 1rem;
+    }
+}
+
+.block {
+    position: relative;
+    padding-left: 1rem;
+    &__bullet {
+        &::before {
+            content: '\02022';
+            position: absolute;
+            left: 0rem;
+        }
+    }
+    &__children {
+        margin-left: 1rem;
+    }
+    &__content {
+        &:empty::before {
+            content: '\200B';
+        }
+    }
+
+    &--root {
+        display: contents;
+        > .block__children {
+            display: contents;
+        }
+        > .block__bullet,
+        > .block__content {
+            display: none;
+        }
+    }
+
+    blockquote {
+        margin: 0;
+        border-left: 5px solid $page-border-color;
+        padding-left: 0.5rem;
+    }
+}

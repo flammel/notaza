@@ -1,0 +1,46 @@
+{
+    "name": "kb",
+    "version": "0.0.1",
+    "description": "",
+    "private": true,
+    "scripts": {
+        "lint": "tsc --noEmit && eslint 'src/**/*.{js,ts}'",
+        "prettier": "prettier --write '*.{js,ts,scss}' 'src/**/*.{js,ts,scss}' .eslintrc.js .prettierrc.js jest.config.js jsconfig.json package.json tsconfig.json webpack.config.js",
+        "watch": "webpack --watch --mode=development",
+        "serve": "webpack-dev-server",
+        "build": "webpack --mode=production",
+        "test": "jest"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/jest": "^25.1.4",
+        "@types/katex": "^0.11.0",
+        "@types/marked": "^0.7.3",
+        "@typescript-eslint/eslint-plugin": "^2.25.0",
+        "@typescript-eslint/parser": "^2.25.0",
+        "benchmark": "^2.1.4",
+        "css-loader": "^3.4.2",
+        "eslint": "^6.8.0",
+        "eslint-config-prettier": "^6.10.1",
+        "eslint-plugin-prettier": "^3.1.2",
+        "file-loader": "^6.0.0",
+        "jest": "^25.2.3",
+        "mini-css-extract-plugin": "^0.9.0",
+        "node-sass": "^4.13.1",
+        "prettier": "^2.0.2",
+        "sass-loader": "^8.0.2",
+        "style-loader": "^1.1.3",
+        "ts-jest": "^25.2.1",
+        "ts-loader": "^6.2.2",
+        "typescript": "^3.8.3",
+        "webpack": "^4.42.1",
+        "webpack-cli": "^3.3.11",
+        "webpack-dev-server": "^3.10.3"
+    },
+    "dependencies": {
+        "immer": "^6.0.3",
+        "katex": "^0.11.1",
+        "marked": "^0.8.2"
+    }
+}
