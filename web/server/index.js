@@ -39,12 +39,22 @@ function getFiles(callback) {
     });
 }
 
-function writeFile(payload, callback) {
-    fs.writeFile(
-        path.resolve(contentDir, payload.uri + '.md'),
-        payload.markdown,
-        callback,
-    );
+function writeFile(id, payload, onSuccess, onError) {
+    if (id === payload.id) {
+        fs.writeFile(
+            path.resolve(contentDir, payload.id + '.md'),
+            payload.markdown,
+            (err) => {
+                if (err) {
+                    onError(500, err);
+                } else {
+                    onSuccess();
+                }
+            },
+        );
+    } else {
+        onError(400, 'ID from URL does not match ID from body');
+    }
 }
 
 function deletePage(uri, callback) {
@@ -87,8 +97,10 @@ app.get('/pages', (req, res) => {
     });
 });
 app.put('/pages/:uri', (req, res) => {
-    writeFile(req.body, () => {
+    writeFile(req.params.uri, req.body, () => {
         res.status(200).json({ success: true });
+    }, (code, message) => {
+        res.status(code).json({ success: false, error: message });
     });
 });
 app.delete('/pages/:uri', (req, res) => {
