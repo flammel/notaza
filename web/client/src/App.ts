@@ -1,286 +1,271 @@
-import { Page, Block, Pages, Notification, BlockId, Dispatch, PageId, AppState } from './types';
-import * as actions from './actions';
-import { managedViewArray, View, view } from './view';
-import { htmlBuilder, replaceContent } from './html';
-import { render } from './markdown';
-import { autoResize } from './util';
+import { Page, Pages, PageId, Notification } from './types';
+import { Renderer } from './Renderer';
+import { Api } from './Api';
+import { dateToString } from './util';
 
-export type AppDispatch = Dispatch<AppState, actions.AppAction>
-
-interface SidebarItemViewState {
-    page: Page;
+function findPage(pages: Pages, id: PageId): Page | undefined {
+    for (const page of pages) {
+        if (page.id === id) {
+            return page;
+        }
+    }
+    return undefined;
 }
-function SidebarItemView(dispatch: AppDispatch, initialState: SidebarItemViewState): View<SidebarItemViewState> {
-    let currentState = initialState;
-    const $link = htmlBuilder('a')
-        .setAttribute('href', initialState.page.url)
-        .innerText(initialState.page.title)
-        .addEventListener('click', (ev) => {
-            ev.preventDefault();
-            dispatch(actions.changeUrl(currentState.page.url));
-        })
-        .build();
-    const update = (newState: SidebarItemViewState) => {
-        if (newState.page.title !== currentState.page.title) {
-            $link.innerText = newState.page.title;
-        }
-        if (newState.page.url !== currentState.page.url) {
-            $link.setAttribute('href', newState.page.url);
-        }
-        currentState = newState;
+
+interface Notifications {
+    element: HTMLElement;
+    add: (notification: Notification) => void;
+}
+function makeNotifications(): Notifications {
+    const $notifications = document.createElement('div');
+    $notifications.classList.add('notifications');
+    return {
+        element: $notifications,
+        add: (notification: Notification): void => {
+            const $notification = document.createElement('div');
+            $notification.classList.add('notification');
+            $notification.innerText = notification.message;
+            $notification.classList.add(
+                notification.type === 'error' ? 'notification--error' : 'notification--success',
+            );
+            $notifications.appendChild($notification);
+            setTimeout(() => {
+                $notifications.removeChild($notification);
+            }, 3000);
+        },
     };
-    return view(htmlBuilder('li').appendChild($link).build(), update);
 }
 
-interface SidebarViewState {
-    pages: Pages;
+interface PageView {
+    element: HTMLElement;
+    setPage: (page: Page, editing?: boolean) => void;
 }
-function SidebarView(dispatch: AppDispatch): View<SidebarViewState> {
-    const $list = htmlBuilder('ul').addClass('pagelist').build();
-    const children = managedViewArray($list, (state: SidebarItemViewState) => SidebarItemView(dispatch, state));
-    return view(htmlBuilder('div').addClass('sidebar').appendChild($list).build(), (newState) =>
-        children.update(newState.pages.map((page) => ({ page, key: page.id }))),
-    );
-}
+function makePageView(renderer: Renderer, savePage: (page: Page) => Promise<void>): PageView {
+    let page: Page | undefined;
+    const $page = document.createElement('div');
+    $page.classList.add('page');
 
-interface PageHeaderViewState {
-    page: Page;
-}
-function PageHeaderView(): View<PageHeaderViewState> {
-    const $title = htmlBuilder('h1').build();
-    return view(htmlBuilder('div').addClass('page__header').appendChild($title).build(), (newState) => {
-        if ($title.innerText !== newState.page.title) {
-            $title.innerText = newState.page.title;
-        }
-    });
-}
+    const $body = document.createElement('div');
 
-function makeEditor(dispatch: AppDispatch, page: Page, block: Block): HTMLTextAreaElement {
-    return htmlBuilder('textarea')
-        .innerText(block.content)
-        .addClass('inline-editor')
-        .setAttribute('rows', 1)
-        .addEventListener('keydown', (ev, el) => {
-            if (ev.key === 'Escape' || (ev.key === 's' && ev.ctrlKey)) {
-                ev.preventDefault();
-                dispatch(actions.stopEditing(page.id, block.id, el.value));
-            } else if (ev.key === 'Enter' && !ev.shiftKey) {
-                ev.preventDefault();
-                const before = el.value.substring(0, el.selectionStart);
-                const after = el.value.substring(el.selectionEnd, el.value.length);
-                dispatch(actions.splitBlock(page.id, block.id, before, after));
-            } else if (ev.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) {
-                ev.preventDefault();
-                dispatch(actions.mergeBlockWithPredecessor(page.id, block.id, el.value));
-            } else if (
-                ev.key === 'Delete' &&
-                el.selectionStart === el.value.length &&
-                el.selectionEnd === el.value.length
-            ) {
-                ev.preventDefault();
-                dispatch(actions.mergeBlockWithSuccessor(page.id, block.id, el.value));
-            } else if (ev.key === 'Tab') {
-                ev.preventDefault();
-                dispatch(actions.changeBlockLevel(page.id, block.id, ev.shiftKey ? -1 : 1, el.value));
-            }
-        })
-        .addEventListener('input', (ev, el) => {
-            autoResize(el);
-        })
-        // .addEventListener('blur', (ev, el) => {
-        //     dispatch(actions.stopEditing(page.id, block.id, el.value));
-        // })
-        .build();
-}
+    const $edit = document.createElement('button');
+    $edit.innerText = 'edit';
+    $edit.classList.add('edit-button');
 
-interface BlockViewState {
-    page: Page;
-    block: Block;
-    editingId: BlockId | undefined;
-    render: (markdown: string) => string;
-}
-function BlockView(dispatch: AppDispatch, initialState: BlockViewState): View<BlockViewState> {
-    let currentState: Readonly<BlockViewState> = initialState;
-    const $bullet = htmlBuilder('div').addClass('block__bullet').build();
-    const $children = htmlBuilder('div').addClass('block__children').build();
-    const $content = htmlBuilder('div')
-        .addClass('block__content')
-        .innerHTML(currentState.render(currentState.block.content))
-        .addEventListener('click', () => {
-            dispatch(actions.startEditing(currentState.block.id));
-        })
-        .build();
-    const $block = htmlBuilder('div')
-        .addClass('block')
-        .data('id', currentState.block.id)
-        .withChildren([$bullet, $content, $children])
-        .build();
-    const managedChildren = managedViewArray($children, (state: BlockViewState) => BlockView(dispatch, state));
-
-    let $textarea: HTMLTextAreaElement | undefined;
-    const update = (newState: BlockViewState, initial: boolean = false): void => {
-        if (newState.block.content !== currentState.block.content) {
-            $content.innerHTML = newState.render(newState.block.content);
-        }
-        if (newState.block.id !== currentState.block.id) {
-            $block.dataset.id = newState.block.id;
-        }
-        if (newState.editingId === newState.block.id && !$textarea) {
-            $textarea = makeEditor(dispatch, newState.page, newState.block);
-            replaceContent($content, $textarea);
-            autoResize($textarea);
-            $textarea.setSelectionRange(-1, -1);
-        }
-        if (newState.editingId !== newState.block.id && $textarea) {
-            $textarea = undefined;
-            $content.innerHTML = newState.render(newState.block.content);
-        }
-        managedChildren.update(
-            newState.block.children.map((child) => ({
-                ...newState,
-                block: child,
-                key: child.id,
-            })),
-        );
-        currentState = newState;
+    const renderPage = (newPage: Page): void => {
+        page = newPage;
+        $page.classList.remove('page--editing');
+        $body.innerHTML = renderer.render(page.markdown);
     };
-    update(initialState, true);
 
-    return view($block, update, currentState.block.id, undefined, () => {
-        if (currentState.editingId === currentState.block.id && $textarea) {
-            $textarea.focus();
+    const startEditing = (): void => {
+        const currentPage = page;
+        if (currentPage) {
+            const $textarea = document.createElement('textarea');
+            $textarea.innerHTML = currentPage.markdown;
+            $textarea.classList.add('editor');
+
+            const $submit = document.createElement('button');
+            $submit.innerText = 'save';
+
+            const $cancel = document.createElement('button');
+            $cancel.setAttribute('type', 'button');
+            $cancel.innerText = 'cancel';
+            $cancel.addEventListener('click', () => {
+                renderPage(currentPage);
+            });
+
+            const $form = document.createElement('form');
+            $form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const withNewContent = { ...currentPage, markdown: $textarea.value };
+                savePage(withNewContent).then(() => renderPage(withNewContent));
+            });
+
+            $form.appendChild($textarea);
+            $form.appendChild($submit);
+            $form.appendChild($cancel);
+
+            $page.classList.add('page--editing');
+            $body.innerHTML = '';
+            $body.appendChild($form);
         }
+    };
+
+    const setPage = (newPage: Page, editing: boolean | undefined = false): void => {
+        renderPage(newPage);
+        if (editing) {
+            startEditing();
+        }
+    };
+
+    $edit.addEventListener('click', () => startEditing());
+
+    $page.appendChild($edit);
+    $page.appendChild($body);
+
+    return {
+        element: $page,
+        setPage,
+    };
+}
+
+interface Sidebar {
+    element: HTMLElement;
+    setPages: (pages: Pages) => void;
+}
+function makeSidebar(goToPage: (page: Page) => void): Sidebar {
+    let allPages: Pages = [];
+    let query = '';
+
+    const $sidebar = document.createElement('div');
+    $sidebar.classList.add('sidebar');
+
+    const $pageList = document.createElement('ul');
+    $pageList.classList.add('page-list');
+
+    const $form = document.createElement('form');
+    const $input = document.createElement('input');
+    $input.setAttribute('placeholder', 'Search');
+
+    $form.appendChild($input);
+
+    const makePageListItem = (page: Page, goToPage: (page: Page) => void): HTMLLIElement => {
+        const $item = document.createElement('li');
+        const $link = document.createElement('a');
+        $link.setAttribute('href', page.id);
+        $link.innerText = page.title;
+        $link.addEventListener('click', (event) => {
+            event.preventDefault();
+            goToPage(page);
+        });
+        $item.appendChild($link);
+        return $item;
+    };
+
+    const updatePageList = (pages: Pages, goToPage: (page: Page) => void): void => {
+        const $fragment = document.createDocumentFragment();
+        for (const page of pages) {
+            $fragment.appendChild(makePageListItem(page, goToPage));
+        }
+        $pageList.innerHTML = '';
+        $pageList.appendChild($fragment);
+    };
+
+    const search = (): Pages => {
+        return allPages.filter((page) => page.title.toLowerCase().includes(query.toLowerCase()));
+    };
+
+    $form.addEventListener('submit', (event) => {
+        event.preventDefault();
     });
-}
-
-interface BlocksViewState {
-    page: Page;
-    editingId: BlockId | undefined;
-    render: (markdown: string) => string;
-}
-function BlocksView(dispatch: AppDispatch): View<BlocksViewState> {
-    const $root = htmlBuilder('div').addClass('blocks').build();
-    const children = managedViewArray($root, (state: BlockViewState) => BlockView(dispatch, state));
-
-    return view($root, (newState) => {
-        children.update(
-            newState.page.block.children.map((block) => ({
-                page: newState.page,
-                block,
-                key: block.id,
-                editingId: newState.editingId,
-                render: newState.render,
-            })),
-        );
+    $input.addEventListener('input', () => {
+        query = $input.value;
+        updatePageList(search(), goToPage);
     });
+
+    $sidebar.appendChild($form);
+    $sidebar.appendChild($pageList);
+
+    return {
+        element: $sidebar,
+        setPages: (pages: Pages): void => {
+            allPages = pages;
+            updatePageList(search(), goToPage);
+        },
+    };
 }
 
-interface BacklinksViewState {
-    page: Page;
+interface App {
+    element: HTMLElement;
 }
-function BacklinksView(): View<BacklinksViewState> {
-    const $root = htmlBuilder('div').addClass('blocks', 'blocks--backlinks').build();
-    return view($root, () => {});
-}
+export function makeApp(renderer: Renderer, api: Api): App {
+    let pages: Pages = [];
 
-interface PageViewState {
-    page: Page;
-    editingId: BlockId | undefined;
-    render: (markdown: string) => string;
-}
-function PageView(dispatch: AppDispatch): View<PageViewState> {
-    const header = PageHeaderView();
-    const blocks = BlocksView(dispatch);
-    const backlinks = BacklinksView();
+    const $app = document.createElement('div');
+    $app.classList.add('app');
 
-    return view(
-        htmlBuilder('div')
-            .addClass('page')
-            .withChildren([
-                header.element,
-                blocks.element,
-                htmlBuilder('h2').innerText('Backlinks').build(),
-                backlinks.element,
-            ])
-            .build(),
-        (newState) => {
-            header.update({ page: newState.page });
-            blocks.update({ page: newState.page, editingId: newState.editingId, render: newState.render });
-            backlinks.update({ page: newState.page });
+    const notifications = makeNotifications();
+    const pageView = makePageView(
+        renderer,
+        (page: Page): Promise<void> => {
+            return new Promise((resolve, reject) => {
+                api.savePage(page)
+                    .then(() => {
+                        notifications.add({
+                            type: 'success',
+                            message: 'saved',
+                        });
+                        resolve();
+                    })
+                    .catch(() => {
+                        notifications.add({
+                            type: 'error',
+                            message: 'failed',
+                        });
+                        reject();
+                    });
+            });
         },
     );
-}
 
-interface NotificationViewState {
-    notification: Notification;
-}
-function NotificationView(initialState: NotificationViewState): View<NotificationViewState> {
-    const $root = htmlBuilder('div').addClass('notification').build();
-
-    const update = (newState: NotificationViewState) => {
-        $root.innerText = newState.notification.message;
-        if (newState.notification.type === 'success') {
-            $root.classList.remove('notification--error');
-            $root.classList.add('notification--success');
-        } else {
-            $root.classList.add('notification--error');
-            $root.classList.remove('notification--success');
-        }
+    const newPage = (url: string): Page => {
+        return {
+            id: url,
+            markdown: `---\ntitle: ${url}\ncreated: ${new Date()
+                .toISOString()
+                .replace('T', ' ')
+                .substring(0, 16)}\n---\n\n# ${url}`,
+            title: url,
+        };
     };
-    update(initialState);
 
-    return view($root, update);
-}
+    const navigateToUrl = (url: string): void => {
+        window.history.pushState(undefined, url, url);
+        const page = findPage(pages, url);
+        if (page === undefined) {
+            pageView.setPage(newPage(url), true);
+        } else {
+            pageView.setPage(page);
+        }
+        window.scrollTo(0, 0);
+    };
 
-interface NotificationsViewState {
-    notifications: Notification[];
-}
-function Notifications(): View<NotificationsViewState> {
-    const $root = htmlBuilder('div').addClass('notifications').build();
-    const children = managedViewArray($root, NotificationView);
-    return view($root, (newState) =>
-        children.update(
-            newState.notifications.map((notification) => ({
-                notification,
-                key: notification.id,
-            })),
-        ),
-    );
-}
+    const sidebar = makeSidebar((page: Page) => navigateToUrl(page.id));
 
-type AppViewState = {
-    pages: Pages;
-    currentPage: PageId;
-    editingId: BlockId | undefined;
-    notifications: Notification[];
-};
-export function AppView(dispatch: AppDispatch): View<AppViewState> {
-    const sidebar = SidebarView(dispatch);
-    const pageView = PageView(dispatch);
-    const notifications = Notifications();
+    $app.appendChild(sidebar.element);
+    $app.appendChild(pageView.element);
+    $app.appendChild(notifications.element);
+
     document.addEventListener('click', (ev) => {
         if (ev.target instanceof HTMLAnchorElement && ev.target.classList.contains('internal')) {
             ev.preventDefault();
-            dispatch(actions.changeUrl(ev.target.getAttribute('href')?.substring(2) ?? ''));
+            navigateToUrl(ev.target.getAttribute('href')?.substring(2) || '');
         }
     });
-    return view(
-        htmlBuilder('div')
-            .addClass('app')
-            .withChildren([sidebar.element, pageView.element, notifications.element])
-            .build(),
-        (newState) => {
-            sidebar.update({ pages: newState.pages });
-            notifications.update({ notifications: newState.notifications });
-            for (const page of newState.pages) {
-                if (page.id === newState.currentPage) {
-                    pageView.update({
-                        page,
-                        editingId: newState.editingId,
-                        render: (markdown: string) => render(newState, markdown),
-                    });
-                }
+
+    api.loadPages()
+        .then((loadedPages) => {
+            pages = loadedPages;
+            sidebar.setPages(loadedPages);
+            let url = window.location.pathname.substring(1);
+            if (url === '') {
+                url = dateToString(new Date());
             }
-        },
-    );
+            const page = findPage(pages, url);
+            if (page) {
+                pageView.setPage(page);
+            } else {
+                pageView.setPage(newPage(url), true);
+            }
+        })
+        .catch(() => {
+            notifications.add({
+                type: 'error',
+                message: 'load failed',
+            });
+        });
+
+    return {
+        element: $app,
+    };
 }

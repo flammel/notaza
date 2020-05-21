@@ -6,15 +6,18 @@ html {
     @include font;
     font-size: 16px;
 }
+
 body {
     margin: 0;
     background-color: $light-blue;
 }
+
 .app {
     display: flex;
     flex-direction: row;
     width: 100%;
 }
+
 .sidebar {
     width: 18rem;
     padding: 1rem;
@@ -85,36 +88,6 @@ body {
     }
 }
 
-.autocomplete {
-    position: absolute;
-    background: #fff;
-    border: 1px solid $page-border-color;
-    border-radius: 3px;
-    z-index: 20;
-    padding: 0.5rem;
-
-    &__input {
-        padding: 0.25rem;
-        box-sizing: border-box;
-        width: 100%;
-        @include font;
-        margin-bottom: 0.5rem;
-    }
-
-    &__list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    &__item {
-        padding: 0.25rem;
-        &--selected {
-            background: $light-blue;
-        }
-    }
-}
-
 .notifications {
     position: fixed;
     bottom: 0.5rem;
@@ -155,35 +128,37 @@ a.current {
     font-weight: bold;
 }
 
-.inline-editor {
-    @include font;
-    border: none;
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    display: block;
-    background-color: yellow;
-    resize: none;
-    overflow-y: hidden;
-    &:focus {
-        outline: none;
-    }
-    &--mirror {
-        @include font;
+.page {
+    position: relative;
+    .edit-button {
         position: absolute;
-        left: -10000px;
-        top: -10000px;
+        top: 1rem;
+        right: 1rem;
+    }
+    &--editing {
+        .edit-button {
+            display: none;
+        }
+    }
+    blockquote {
+        margin: 0;
+        border-left: 4px solid #dcdcdc;
+        padding-left: 4px;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    h1 {
+        margin-top: 0;
     }
 }
 
-.raw-editor {
+.editor {
     width: 100%;
     display: block;
     height: 30rem;
     box-sizing: border-box;
     resize: vertical;
-}
-
-.more-pages {
-    display: contents;
 }

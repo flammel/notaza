@@ -1,8 +1,7 @@
-import { Pages, Page, Block } from './types';
-import { makeBlockId } from './blockId';
+import { Pages, Page } from './types';
 
 interface ApiPage {
-    uri: string;
+    id: string;
     markdown: string;
 }
 type UploadedFile = { filename: string };
@@ -11,22 +10,20 @@ type DeleteResult = { success: boolean };
 
 export interface Api {
     loadPages(): Promise<Pages>;
-    savePage(page: Page): Promise<SaveResult>;
+    savePage(page: Page): Promise<void>;
     deletePage(page: Page): Promise<DeleteResult>;
     uploadFile(file: File): Promise<UploadedFile>;
 }
 
-let api: Api | undefined;
-
-export function configureApi(url: string): Api {
-    api = {
+export function makeApi(url: string): Api {
+    return {
         loadPages(): Promise<Pages> {
             return fetch(url + '/pages')
                 .then((r) => r.json())
-                .then((json: { data: ApiPage[] }) => fromApiPages(json.data));
+                .then((json: { data: ApiPage[] }) => readPages(json.data));
         },
-        savePage(page: Page): Promise<SaveResult> {
-            return fetch(url + '/pages/' + page.url, {
+        savePage(page: Page): Promise<void> {
+            return fetch(url + '/pages', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -34,10 +31,17 @@ export function configureApi(url: string): Api {
                 body: JSON.stringify(page),
             })
                 .then((res) => res.json())
-                .then((json: SaveResult) => json);
+                .then((json: SaveResult) => {
+                    if (json.success) {
+                        return Promise.resolve();
+                    } else {
+                        return Promise.reject();
+                    }
+                })
+                .catch(() => Promise.reject());
         },
         deletePage(page: Page): Promise<DeleteResult> {
-            return fetch(url + '/pages/' + page.url, {
+            return fetch(url + '/pages/' + page.id, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -57,86 +61,23 @@ export function configureApi(url: string): Api {
                 .then((json: { data: UploadedFile }) => json.data);
         },
     };
-    return api;
 }
 
-export function useApi(): Api {
-    if (!api) {
-        throw new Error('api not configured');
+function getTitle(markdown: string): string | undefined {
+    const match = markdown.match(/^title: (.*)$/gm);
+    if (match && match[0]) {
+        return match[0].substring('title: '.length);
     }
-    return api;
+    return undefined;
 }
 
-function splitMarkdown(markdown: string): [string, string] {
-    const lines = markdown.split('\n');
-    lines.shift();
-    const title = (lines.shift() ?? '').substring('title: '.length).replace(/^"(.*)"$/, '$1');
-    lines.shift();
-    while (lines[0] === '') {
-        lines.shift();
-    }
-    return [title, lines.join('\n')];
-}
-
-function fromApiPages(apiPages: ApiPage[]): Pages {
-    return apiPages.map(({ uri, markdown }) => {
-        const [title, content] = splitMarkdown(markdown);
+function readPages(apiPages: ApiPage[]): Pages {
+    return apiPages.map(({ id, markdown }) => {
+        const title = getTitle(markdown) || id;
         return {
-            id: uri,
-            url: uri,
+            id,
             title,
-            block: blocksFromMarkdown(content),
+            markdown,
         };
     });
-}
-
-export function blocksFromMarkdown(markdown: string): Block {
-    const rootBlock: Block = { id: makeBlockId(), content: '', children: [] };
-    const lines = markdown.split('\n');
-    const regex = new RegExp(/^( *)\* (.*)$/);
-
-    // Remove empty lines between frontmatter and first block
-    while (lines[0] === '') {
-        lines.shift();
-    }
-
-    // Group lines into block contents
-    const groupedLines: [number, string][] = [];
-    for (const line of lines) {
-        const match = line.match(regex);
-        if (match) {
-            groupedLines.push([match[1].length, match[2]]);
-        } else {
-            const current = groupedLines.pop();
-            if (!current) {
-                console.warn('no line group', markdown);
-                return rootBlock;
-            }
-            current[1] += '\n' + line.trimLeft();
-            groupedLines.push(current);
-        }
-    }
-
-    // Build tree
-    const stack: [number, Block][] = [];
-    for (const [level, content] of groupedLines) {
-        const top = stack.pop() ?? [-1, rootBlock];
-        const newBlock = { id: makeBlockId(), content, children: [] };
-        if (top[0] < level) {
-            top[1].children.push(newBlock);
-            stack.push(top);
-            stack.push([level, newBlock]);
-        } else {
-            let parent = stack.pop();
-            while (parent && parent[0] >= level) {
-                parent = stack.pop();
-            }
-            parent = parent ?? [-1, rootBlock];
-            parent[1].children.push(newBlock);
-            stack.push(parent);
-            stack.push([level, newBlock]);
-        }
-    }
-
-    return rootBlock;
 }

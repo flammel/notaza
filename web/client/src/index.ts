@@ -1,28 +1,11 @@
 import './index.scss';
-import { AppView } from './App';
-import { configureApi } from './Api';
-import * as actions from './actions';
-import { makeStore } from './store';
-import { AppState } from './types';
+import { makeApi } from './Api';
+import { makeApp } from './App';
+import { makeRenderer } from './Renderer';
 
-const initialState: Readonly<AppState> = {
-    pages: [],
-    currentPage: '',
-    editingId: undefined,
-    notifications: [],
-};
-const store = makeStore(initialState, actions.reduce);
-const app = AppView(store.dispatch);
-store.subscribe((newState: AppState) => {
-    app.update(newState);
-});
-
-const api = configureApi(window.localStorage.getItem('apiUri') ?? '');
-api.loadPages().then((loadedPages) => {
-    store.dispatch(actions.setPages(loadedPages));
-    store.dispatch(actions.changeUrl(window.location.pathname.substring(1)));
-});
-
+const api = makeApi(window.localStorage.getItem('apiUri') ?? '');
+const renderer = makeRenderer();
+const app = makeApp(renderer, api);
 document.getElementById('container')?.appendChild(app.element);
 
 // PWA

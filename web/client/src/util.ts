@@ -1,11 +1,24 @@
-export function dateToString(date: Date): string {
-    return (
-        date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).substr(-2) + '-' + ('0' + date.getDate()).substr(-2)
-    );
+function leftPad(x: number): string {
+    return ('0' + x).substr(-2);
 }
 
-// https://stackoverflow.com/a/25621277
-export function autoResize(textarea: HTMLTextAreaElement): void {
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
+export function dateToString(date: Date): string {
+    return date.getFullYear() + '-' + leftPad(date.getMonth() + 1) + '-' + leftPad(date.getDate());
+}
+
+export function dateTimeToString(date: Date): string {
+    return dateToString(date) + ' ' + leftPad(date.getHours()) + ':' + leftPad(date.getMinutes());
+}
+
+/**
+ * https://stackoverflow.com/a/1349426
+ */
+export function makeId(): string {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < 16; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
 }
