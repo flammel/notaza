@@ -7,7 +7,6 @@ error_reporting(E_ALL);
 require_once "../vendor/autoload.php";
 require_once "../config.php";
 
-
 set_error_handler(function($code, $description) {
     throw new Exception("Caught by error handler: " . $description);
 });
