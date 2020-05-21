@@ -5,14 +5,16 @@ interface ApiPage {
     markdown: string;
 }
 type UploadedFile = { filename: string };
-type SaveResult = { success: boolean };
+type SaveResult = { success: true; data: ApiPage } | { success: false; error: string };
 type DeleteResult = { success: boolean };
+type RefreshBacklinksResult = { success: boolean };
 
 export interface Api {
     loadPages(): Promise<Pages>;
-    savePage(page: Page): Promise<void>;
+    savePage(page: Page): Promise<Page>;
     deletePage(page: Page): Promise<DeleteResult>;
     uploadFile(file: File): Promise<UploadedFile>;
+    refreshBAcklinks(): Promise<RefreshBacklinksResult>;
 }
 
 export function makeApi(url: string): Api {
@@ -20,9 +22,9 @@ export function makeApi(url: string): Api {
         loadPages(): Promise<Pages> {
             return fetch(url + '/pages')
                 .then((r) => r.json())
-                .then((json: { data: ApiPage[] }) => readPages(json.data));
+                .then((json: { data: ApiPage[] }) => json.data.map(readPage));
         },
-        savePage(page: Page): Promise<void> {
+        savePage(page: Page): Promise<Page> {
             return fetch(url + '/pages', {
                 method: 'PUT',
                 headers: {
@@ -33,7 +35,7 @@ export function makeApi(url: string): Api {
                 .then((res) => res.json())
                 .then((json: SaveResult) => {
                     if (json.success) {
-                        return Promise.resolve();
+                        return Promise.resolve(readPage(json.data));
                     } else {
                         return Promise.reject();
                     }
@@ -60,6 +62,13 @@ export function makeApi(url: string): Api {
                 .then((res: Response) => res.json())
                 .then((json: { data: UploadedFile }) => json.data);
         },
+        refreshBAcklinks(): Promise<RefreshBacklinksResult> {
+            return fetch(url + '/backlinks', {
+                method: 'POST',
+            })
+                .then((res: Response) => res.json())
+                .then((json: RefreshBacklinksResult) => json);
+        },
     };
 }
 
@@ -71,13 +80,11 @@ function getTitle(markdown: string): string | undefined {
     return undefined;
 }
 
-function readPages(apiPages: ApiPage[]): Pages {
-    return apiPages.map(({ id, markdown }) => {
-        const title = getTitle(markdown) || id;
-        return {
-            id,
-            title,
-            markdown,
-        };
-    });
+function readPage({ id, markdown }: ApiPage): Page {
+    const title = getTitle(markdown) || id;
+    return {
+        id,
+        title,
+        markdown,
+    };
 }
