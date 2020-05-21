@@ -3,9 +3,6 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import bodyParser from 'body-parser';
-import cors from 'cors';
-import basicAuth from 'express-basic-auth';
-import bcrypt from 'bcrypt';
 import { JsonDecoder } from 'ts.data.json';
 import * as dotenv from 'dotenv';
 import { updateBacklinks, Page, parsePage, PageId, ParsedPage } from './lib';
@@ -14,9 +11,6 @@ dotenv.config();
 const config = {
     contentDir: process.env.NOTAZA_CONTENT_DIRECTORY as string,
     port: process.env.NOTAZA_PORT as string,
-    corsOrigin: process.env.NOTAZA_CORS_ORIGIN as string,
-    username: process.env.NOTAZA_CORS_USERNAME as string,
-    password: process.env.NOTAZA_CORS_PASSWORD as string,
 };
 
 const pageDecoder = JsonDecoder.object<Page>(
@@ -76,26 +70,6 @@ const upload = multer({
 
 const app = express();
 app.use(bodyParser.json());
-app.use(
-    cors({
-        origin: process.env.NOTAZA_CORS_ORIGIN,
-    }),
-);
-app.use(
-    basicAuth({
-        challenge: true,
-        authorizeAsync: true,
-        authorizer: (username, password, cb): void => {
-            if (basicAuth.safeCompare(username, config.username)) {
-                bcrypt.compare(password, config.password, (err, result) => {
-                    cb(null, result);
-                });
-            } else {
-                cb(null, false);
-            }
-        },
-    }),
-);
 app.get('/api/pages', async (req, res) => {
     try {
         const pages = await getPages();
