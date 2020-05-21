@@ -37,6 +37,8 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const cors_1 = __importDefault(require("cors"));
+const express_basic_auth_1 = __importDefault(require("express-basic-auth"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const ts_data_json_1 = require("ts.data.json");
 const dotenv = __importStar(require("dotenv"));
 const lib_1 = require("./lib");
@@ -45,6 +47,8 @@ const config = {
     contentDir: process.env.NOTAZA_CONTENT_DIRECTORY,
     port: process.env.NOTAZA_PORT,
     corsOrigin: process.env.NOTAZA_CORS_ORIGIN,
+    username: process.env.NOTAZA_CORS_USERNAME,
+    password: process.env.NOTAZA_CORS_PASSWORD,
 };
 const pageDecoder = ts_data_json_1.JsonDecoder.object({
     id: ts_data_json_1.JsonDecoder.string,
@@ -98,6 +102,20 @@ const app = express_1.default();
 app.use(body_parser_1.default.json());
 app.use(cors_1.default({
     origin: process.env.NOTAZA_CORS_ORIGIN,
+}));
+app.use(express_basic_auth_1.default({
+    challenge: true,
+    authorizeAsync: true,
+    authorizer: (username, password, cb) => {
+        if (express_basic_auth_1.default.safeCompare(username, config.username)) {
+            bcrypt_1.default.compare(password, config.password, (err, result) => {
+                cb(null, result);
+            });
+        }
+        else {
+            cb(null, false);
+        }
+    },
 }));
 app.get('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
