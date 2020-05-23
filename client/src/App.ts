@@ -92,6 +92,7 @@ function makePageView(renderer: Renderer, savePage: (page: Page) => Promise<Page
     };
 
     const setPage = (newPage: Page, editing: boolean | undefined = false): void => {
+        document.title = newPage.title;
         renderPage(newPage);
         if (editing) {
             startEditing();
