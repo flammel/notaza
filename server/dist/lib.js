@@ -19,7 +19,7 @@ function replaceBacklinks(pages, markdown, links) {
     const endParts = markdown.split(endCommentValue, 2);
     const afterEnd = endParts.length === 1 ? '' : endParts.pop() || '';
     const newBacklinks = stringifyProcessor.stringify(backlinksNode(pages, links));
-    return (beforeStart + newBacklinks + afterEnd).trimRight() + '\n';
+    return (beforeStart.trimRight() + '\n\n' + newBacklinks + '\n\n' + afterEnd.trimLeft()).trimRight() + '\n';
 }
 function getInternalLinksTo(tree, page) {
     const links = [];
@@ -68,7 +68,7 @@ function getTitle(page) {
     return ((_a = match === null || match === void 0 ? void 0 : match.shift()) === null || _a === void 0 ? void 0 : _a.substring('title: '.length).trim()) || page.id;
 }
 function setLinkTitles(pages, markdown) {
-    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)\.md\)/g, (match, content) => {
+    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)(\.md)?\)/g, (match, content) => {
         var _a;
         const title = ((_a = pages.get(content)) === null || _a === void 0 ? void 0 : _a.title) || content;
         return `[${title}](./${content}.md)`;

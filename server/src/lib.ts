@@ -31,7 +31,7 @@ function replaceBacklinks(pages: Map<PageId, ParsedPage>, markdown: string, link
     const endParts = markdown.split(endCommentValue, 2);
     const afterEnd = endParts.length === 1 ? '' : endParts.pop() || '';
     const newBacklinks = stringifyProcessor.stringify(backlinksNode(pages, links));
-    return (beforeStart + newBacklinks + afterEnd).trimRight() + '\n';
+    return (beforeStart.trimRight() + '\n\n' + newBacklinks + '\n\n' + afterEnd.trimLeft()).trimRight() + '\n';
 }
 
 function getInternalLinksTo(tree: Node, page: Page): Node[] {
@@ -82,7 +82,7 @@ function getTitle(page: Page): PageTitle {
 }
 
 function setLinkTitles(pages: Map<PageId, ParsedPage>, markdown: string): string {
-    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)\.md\)/g, (match: string, content: string): string => {
+    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)(\.md)?\)/g, (match: string, content: string): string => {
         const title = pages.get(content)?.title || content;
         return `[${title}](./${content}.md)`;
     });
