@@ -33,7 +33,7 @@ export interface Renderer {
 }
 
 export function makeRenderer(): Renderer {
-    const mdIt = MarkdownIt({ html: true })
+    const mdIt = MarkdownIt({ html: true, linkify: true })
         .use(links)
         .use(frontmatter.default, () => {
             return;

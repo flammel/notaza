@@ -264,7 +264,7 @@ export function makeApp(renderer: Renderer, api: Api): App {
     const newPage = (url: string): Page => {
         return {
             id: url,
-            markdown: `---\ntitle: ${url}\ncreated: ${dateTimeToString(new Date())}\n---\n\n# ${url}`,
+            markdown: `---\ntitle: ${url}\ncreated: ${dateTimeToString(new Date())}\n---\n\n* `,
             title: url,
         };
     };
