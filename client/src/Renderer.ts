@@ -10,10 +10,9 @@ const links: MarkdownIt.PluginSimple = (md): void => {
             }
             if (token.type === 'link_open') {
                 const href = token.attrGet('href');
-                const internal = href?.indexOf('./') === 0;
                 const existingClasses = token.attrGet('class') || '';
 
-                if (internal) {
+                if (href?.startsWith('./') && href.endsWith('.md')) {
                     token.attrSet('class', existingClasses + ' internal');
                     token.attrSet('href', href?.slice(0, -3) || '');
                 } else {
