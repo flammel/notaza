@@ -52,10 +52,18 @@ body {
         padding: 0;
         margin: 0;
 
-        li {
-            padding: 0.25rem 0;
+        .search-result {
+            padding: 0.25rem 0.5rem;
             box-sizing: border-box;
+            overflow: hidden;
+            cursor: pointer;
+            &__match {
+                padding: 0.25rem 0;
+            }
             &.active a {
+                background: $darker-blue;
+            }
+            &:hover {
                 background: $darker-blue;
             }
             &.create {
@@ -69,11 +77,10 @@ body {
             a {
                 display: block;
                 box-sizing: border-box;
-                padding: 0.25rem 0.5rem;
+                padding: 0.25rem 0;
                 border-radius: 3px;
                 &:hover {
                     text-decoration: none;
-                    background: $darker-blue;
                 }
                 span {
                     display: block;
@@ -130,16 +137,13 @@ a.current {
 
 .page {
     position: relative;
+
     .edit-button {
         position: absolute;
         top: 1rem;
         right: 1rem;
     }
-    &--editing {
-        .edit-button {
-            display: none;
-        }
-    }
+
     blockquote {
         margin: 0;
         border-left: 4px solid #dcdcdc;

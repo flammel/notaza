@@ -14,7 +14,7 @@ export interface Api {
     savePage(page: Page): Promise<Page>;
     deletePage(page: Page): Promise<DeleteResult>;
     uploadFile(file: File): Promise<UploadedFile>;
-    refreshBAcklinks(): Promise<RefreshBacklinksResult>;
+    refreshBacklinks(): Promise<RefreshBacklinksResult>;
 }
 
 export function makeApi(url: string): Api {
@@ -62,7 +62,7 @@ export function makeApi(url: string): Api {
                 .then((res: Response) => res.json())
                 .then((json: { data: UploadedFile }) => json.data);
         },
-        refreshBAcklinks(): Promise<RefreshBacklinksResult> {
+        refreshBacklinks(): Promise<RefreshBacklinksResult> {
             return fetch(url + '/backlinks', {
                 method: 'POST',
             })
@@ -80,11 +80,17 @@ function getTitle(markdown: string): string | undefined {
     return undefined;
 }
 
+function getSearchable(markdown: string): string[] {
+    const afterFrontmatter = markdown.split('\n---\n').pop() || markdown;
+    const beforeBacklinks = afterFrontmatter.split('\n<!-- notaza backlinks start -->\n').shift() || afterFrontmatter;
+    return beforeBacklinks.split('\n').map((line) => line.replace('*', '').trim());
+}
+
 function readPage({ id, markdown }: ApiPage): Page {
-    const title = getTitle(markdown) || id;
     return {
         id,
-        title,
+        title: getTitle(markdown) || id,
         markdown,
+        searchable: getSearchable(markdown),
     };
 }
