@@ -54,7 +54,7 @@ function makePageView(renderer: Renderer, savePage: (page: Page) => Promise<Page
     const renderPage = (newPage: Page): void => {
         page = newPage;
         $page.classList.remove('page--editing');
-        $body.innerHTML = renderer.render(page.markdown);
+        $body.innerHTML = '<h1>' + page.title + '</h1>' + renderer.render(page.markdown);
     };
 
     const startEditing = (): void => {
