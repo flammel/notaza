@@ -38,6 +38,7 @@ const path_1 = __importDefault(require("path"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const ts_data_json_1 = require("ts.data.json");
 const dotenv = __importStar(require("dotenv"));
+const cors_1 = __importDefault(require("cors"));
 const lib_1 = require("./lib");
 dotenv.config();
 const config = {
@@ -68,10 +69,14 @@ function getParsedPages() {
     });
 }
 function savePage(page) {
-    return fs_1.default.promises.writeFile(path_1.default.resolve(config.contentDir, page.id + '.md'), page.markdown);
+    return __awaiter(this, void 0, void 0, function* () {
+        return fs_1.default.promises.writeFile(path_1.default.resolve(config.contentDir, page.id + '.md'), page.markdown);
+    });
 }
 function deletePage(id) {
-    return fs_1.default.promises.rename(path_1.default.resolve(config.contentDir, id + '.md'), path_1.default.resolve(config.contentDir, '_' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '_' + id + '.md'));
+    return __awaiter(this, void 0, void 0, function* () {
+        return fs_1.default.promises.rename(path_1.default.resolve(config.contentDir, id + '.md'), path_1.default.resolve(config.contentDir, '_' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '_' + id + '.md'));
+    });
 }
 const upload = multer_1.default({
     storage: multer_1.default.diskStorage({
@@ -94,6 +99,7 @@ const upload = multer_1.default({
 }).single('file');
 const app = express_1.default();
 app.use(body_parser_1.default.json());
+app.use(cors_1.default());
 app.get('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const pages = yield getPages();
@@ -108,7 +114,7 @@ app.put('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const payload = yield pageDecoder.decodePromise(req.body);
         const pages = yield getParsedPages();
         const updated = lib_1.updateBacklinks(pages, payload);
-        savePage(updated);
+        yield savePage(updated);
         res.status(200).json({ success: true, data: updated });
     }
     catch (error) {

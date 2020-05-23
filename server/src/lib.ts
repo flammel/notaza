@@ -81,6 +81,13 @@ function getTitle(page: Page): PageTitle {
     return match?.shift()?.substring('title: '.length).trim() || page.id;
 }
 
+function setLinkTitles(pages: Map<PageId, ParsedPage>, markdown: string): string {
+    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)\.md\)/g, (match: string, content: string): string => {
+        const title = pages.get(content)?.title || content;
+        return `[${title}](./${content}.md)`;
+    });
+}
+
 export function parsePage(page: Page): ParsedPage {
     const parsed = parsingProcessor.parse(vfile(withoutFrontmatterAndBacklinks(page.markdown)));
     return {
@@ -102,5 +109,5 @@ export function updateBacklinks(pages: Map<PageId, ParsedPage>, page: Page): Pag
         }
     }
 
-    return { ...page, markdown: replaceBacklinks(pages, page.markdown, links) };
+    return { ...page, markdown: setLinkTitles(pages, replaceBacklinks(pages, page.markdown, links)) };
 }

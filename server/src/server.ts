@@ -5,6 +5,7 @@ import path from 'path';
 import bodyParser from 'body-parser';
 import { JsonDecoder } from 'ts.data.json';
 import * as dotenv from 'dotenv';
+import cors from 'cors';
 import { updateBacklinks, Page, parsePage, PageId, ParsedPage } from './lib';
 
 dotenv.config();
@@ -38,11 +39,11 @@ async function getParsedPages(): Promise<Map<PageId, ParsedPage>> {
     return new Map((await getPages()).map((page) => [page.id, parsePage(page)]));
 }
 
-function savePage(page: Page): Promise<void> {
+async function savePage(page: Page): Promise<void> {
     return fs.promises.writeFile(path.resolve(config.contentDir, page.id + '.md'), page.markdown);
 }
 
-function deletePage(id: string): Promise<void> {
+async function deletePage(id: string): Promise<void> {
     return fs.promises.rename(
         path.resolve(config.contentDir, id + '.md'),
         path.resolve(config.contentDir, '_' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '_' + id + '.md'),
@@ -70,6 +71,7 @@ const upload = multer({
 
 const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 app.get('/api/pages', async (req, res) => {
     try {
         const pages = await getPages();
@@ -83,7 +85,7 @@ app.put('/api/pages', async (req, res) => {
         const payload = await pageDecoder.decodePromise(req.body);
         const pages = await getParsedPages();
         const updated = updateBacklinks(pages, payload);
-        savePage(updated);
+        await savePage(updated);
         res.status(200).json({ success: true, data: updated });
     } catch (error) {
         res.status(500).json({ success: false, error });

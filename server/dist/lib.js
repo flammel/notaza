@@ -67,6 +67,13 @@ function getTitle(page) {
     const match = page.markdown.match(/\ntitle: (.*)\n/gm);
     return ((_a = match === null || match === void 0 ? void 0 : match.shift()) === null || _a === void 0 ? void 0 : _a.substring('title: '.length).trim()) || page.id;
 }
+function setLinkTitles(pages, markdown) {
+    return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)\.md\)/g, (match, content) => {
+        var _a;
+        const title = ((_a = pages.get(content)) === null || _a === void 0 ? void 0 : _a.title) || content;
+        return `[${title}](./${content}.md)`;
+    });
+}
 function parsePage(page) {
     const parsed = parsingProcessor.parse(vfile_1.default(withoutFrontmatterAndBacklinks(page.markdown)));
     return Object.assign(Object.assign({}, page), { root: parsed, title: getTitle(page) });
@@ -82,7 +89,7 @@ function updateBacklinks(pages, page) {
             }
         }
     }
-    return Object.assign(Object.assign({}, page), { markdown: replaceBacklinks(pages, page.markdown, links) });
+    return Object.assign(Object.assign({}, page), { markdown: setLinkTitles(pages, replaceBacklinks(pages, page.markdown, links)) });
 }
 exports.updateBacklinks = updateBacklinks;
 //# sourceMappingURL=lib.js.map
