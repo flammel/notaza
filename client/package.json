@@ -38,6 +38,7 @@
         "baconjs": "^3.0.13",
         "katex": "^0.11.1",
         "markdown-it": "^10.0.0",
-        "markdown-it-front-matter": "^0.2.1"
+        "markdown-it-front-matter": "^0.2.1",
+        "simplebar": "^5.2.0"
     }
 }

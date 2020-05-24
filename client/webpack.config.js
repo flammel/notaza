@@ -12,7 +12,7 @@ module.exports = {
                 exclude: /node_modules/,
             },
             {
-                test: /\.scss$/,
+                test: /\.s?css$/,
                 use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
             },
             {
@@ -22,7 +22,7 @@ module.exports = {
         ],
     },
     resolve: {
-        extensions: ['.ts', '.js', '.scss'],
+        extensions: ['.ts', '.js', '.scss', '.css'],
     },
     output: {
         filename: 'bundle.js',

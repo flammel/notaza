@@ -94,6 +94,7 @@ function makePageView(
         } else {
             renderView(state.page);
         }
+        window.scrollTo(0, 0);
     });
 
     // Result
@@ -182,7 +183,7 @@ function makeSidebar(
     // Elements
 
     const $pageList = document.createElement('ul');
-    $pageList.classList.add('page-list');
+    $pageList.classList.add('sidebar__list');
 
     const $input = document.createElement('input');
     $input.setAttribute('placeholder', 'Search');
@@ -196,6 +197,7 @@ function makeSidebar(
     });
 
     const $form = document.createElement('form');
+    $form.classList.add('sidebar__header');
     $form.addEventListener('submit', (event) => {
         event.preventDefault();
     });
@@ -243,17 +245,17 @@ function makeSidebar(
     };
 }
 
-function findPage(url: string, pages: Pages): Page | undefined {
+function findPage(id: string, pages: Pages): Page | undefined {
     for (const page of pages) {
-        if (page.id === url) {
+        if (page.id === id) {
             return page;
         }
     }
     return undefined;
 }
 
-function newPage(url: string): Page {
-    const id = url === '/' || url === '' ? dateToString(new Date()) : url;
+function newPage(id: string): Page {
+    id = id === '' ? dateToString(new Date()) : id;
     return {
         id: id,
         markdown: `---\ntitle: ${id}\ncreated: ${dateTimeToString(new Date())}\n---\n\n* `,
@@ -262,13 +264,13 @@ function newPage(url: string): Page {
     };
 }
 
-function cleanUrl(rawUrl: string): string {
-    if (rawUrl.startsWith('/')) {
-        return rawUrl.substring(1);
-    } else if (rawUrl.startsWith('./')) {
-        return rawUrl.substring(2);
+function urlToId(url: string): string {
+    if (url.startsWith('/')) {
+        return url.substring(1);
+    } else if (url.startsWith('./')) {
+        return url.substring(2);
     } else {
-        return rawUrl;
+        return url;
     }
 }
 
@@ -283,26 +285,25 @@ export function makeApp(
 ): App {
     // Observables
 
-    const rawUrl$ = new Bacon.Bus<string>();
-    const url$ = rawUrl$.toProperty(window.location.pathname).map(cleanUrl).skipDuplicates();
-    url$.onValue((url) => {
-        if (cleanUrl(window.location.pathname) !== url) {
-            if (url === '') {
-                url = '/';
+    const url$ = new Bacon.Bus<string>();
+    const currentId$ = url$.toProperty(window.location.pathname).map(urlToId).skipDuplicates();
+    currentId$.onValue((id) => {
+        if (urlToId(window.location.pathname) !== id) {
+            if (id === '') {
+                id = '/';
             }
-            window.history.pushState(null, url, url);
+            window.history.pushState(null, id, id);
         }
     });
-
-    const pageFromUrl$ = Bacon.combine(
-        url$,
+    const currentPage$ = Bacon.combine(
+        currentId$,
         pages$,
-        (url, pages): PageViewState => {
-            const page = findPage(url, pages);
+        (id, pages): PageViewState => {
+            const page = findPage(id, pages);
             if (page) {
                 return { page, editing: false };
             } else {
-                return { page: newPage(url), editing: true };
+                return { page: newPage(id), editing: true };
             }
         },
     );
@@ -310,12 +311,11 @@ export function makeApp(
     // Components
 
     const notifications = makeNotifications();
-    const pageView = makePageView(renderer, pageFromUrl$, (page) => savePage(page, notifications.add));
-
+    const pageView = makePageView(renderer, currentPage$, (page) => savePage(page, notifications.add));
     const sidebar = makeSidebar(
         pages$,
         () => refreshBacklinks(notifications.add),
-        (url) => rawUrl$.push(url),
+        (url) => url$.push(url),
     );
 
     // Elements
@@ -333,13 +333,12 @@ export function makeApp(
             event.preventDefault();
             const href = event.target.getAttribute('href');
             if (href) {
-                rawUrl$.push(href);
+                url$.push(href);
             }
         }
     });
-
     window.addEventListener('popstate', () => {
-        rawUrl$.push(window.location.pathname);
+        url$.push(window.location.pathname);
     });
 
     // Result
