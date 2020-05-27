@@ -6,27 +6,35 @@ import remarkStringify from 'remark-stringify';
 import markdown from 'remark-parse';
 import vfile from 'vfile';
 
-type LinkNode = Node & { url: string };
-type FileName = string;
-type OriginFileName = FileName;
-type LinkWithContext = Node;
 export type PageId = string;
-type PageTitle = string;
+export type PageTitle = string;
+export interface FrontMatter {
+    title: string;
+}
 export interface Page {
     id: PageId;
+    frontMatter: FrontMatter;
+    raw: string;
     markdown: string;
+    rawBacklinks: string;
 }
-export interface ParsedPage extends Page {
-    title: PageTitle;
+
+type RawPage = string;
+type RawFrontMatter = string;
+type RawMarkdown = string;
+type RawBacklinks = string;
+type LinkNode = Node & { url: string };
+type LinkWithContext = Node;
+interface ParsedPage extends Page {
     root: Node;
 }
 
-const startCommentValue = '<!-- notaza backlinks start -->';
-const endCommentValue = '<!-- notaza backlinks end -->';
+const startCommentValue = '\n<!-- notaza backlinks start -->\n';
+const endCommentValue = '\n<!-- notaza backlinks end -->\n';
 const parsingProcessor = unified().use(markdown);
 const stringifyProcessor = unified().use(remarkStringify, { bullet: '*' });
 
-function replaceBacklinks(pages: Map<PageId, ParsedPage>, markdown: string, links: Map<PageId, Node[]>): string {
+function replaceBacklinks(pages: Map<PageId, Page>, markdown: string, links: Map<PageId, Node[]>): string {
     const beforeStart = markdown.split(startCommentValue, 2).shift() || '';
     const endParts = markdown.split(endCommentValue, 2);
     const afterEnd = endParts.length === 1 ? '' : endParts.pop() || '';
@@ -49,17 +57,10 @@ function getInternalLinksTo(tree: Node, page: Page): Node[] {
     return links;
 }
 
-function withoutFrontmatterAndBacklinks(markdown: string): string {
-    const beforeBacklinks = markdown.split(startCommentValue, 2).shift();
-    const afterBacklinks = markdown.split(endCommentValue, 2).pop();
-    const afterFrontmatter = beforeBacklinks?.split('\n---\n', 2).pop();
-    return (afterFrontmatter || '') + (afterBacklinks || '');
-}
-
-function backlinksNode(pages: Map<PageId, ParsedPage>, backlinks: Map<OriginFileName, LinkWithContext[]>): Node {
+function backlinksNode(pages: Map<PageId, Page>, backlinks: Map<PageId, LinkWithContext[]>): Node {
     const u = builder;
     const listItems: Node[] = [...backlinks.entries()].map(([origin, contexts]) => {
-        const linkText = pages.get(origin)?.title || origin;
+        const linkText = pages.get(origin)?.frontMatter.title || origin;
         return u('listItem', { spread: false }, [
             u('link', { url: './' + origin + '.md' }, [u('text', linkText)]),
             u('list', { ordered: false, spread: false }, contexts),
@@ -76,38 +77,69 @@ function backlinksNode(pages: Map<PageId, ParsedPage>, backlinks: Map<OriginFile
     };
 }
 
-function getTitle(page: Page): PageTitle {
-    const match = page.markdown.match(/\ntitle: (.*)\n/gm);
-    return match?.shift()?.substring('title: '.length).trim() || page.id;
-}
-
-function setLinkTitles(pages: Map<PageId, ParsedPage>, markdown: string): string {
+function setLinkTitles(pages: Map<PageId, Page>, markdown: string): string {
     return markdown.replace(/\[\]\(\.\/([a-zA-Z0-9-_]+)(\.md)?\)/g, (match: string, content: string): string => {
-        const title = pages.get(content)?.title || content;
+        const title = pages.get(content)?.frontMatter.title || content;
         return `[${title}](./${content}.md)`;
     });
 }
 
-export function parsePage(page: Page): ParsedPage {
-    const parsed = parsingProcessor.parse(vfile(withoutFrontmatterAndBacklinks(page.markdown)));
+function parsePage(page: Page): ParsedPage {
     return {
         ...page,
-        root: parsed,
-        title: getTitle(page),
+        root: parsingProcessor.parse(vfile(page.markdown)),
     };
 }
 
-export function updateBacklinks(pages: Map<PageId, ParsedPage>, page: Page): Page {
+function parseFrontMatter(id: PageId, raw: RawFrontMatter): FrontMatter {
+    for (const line of raw.split('\n')) {
+        if (line.indexOf('title: ') === 0) {
+            return {
+                title: line.substring('title: '.length),
+            };
+        }
+    }
+    return {
+        title: id,
+    };
+}
+
+function splitRaw(raw: RawPage): [RawFrontMatter, RawMarkdown, RawBacklinks] {
+    const frontMatterParts = raw.split('\n---\n');
+    const rawFrontMatter = frontMatterParts.shift() || '';
+    const afterFrontMatter = frontMatterParts.join('\n---\n');
+    const backlinkStartParts = afterFrontMatter.split(startCommentValue);
+    const beforeBacklinkStart = backlinkStartParts.shift() || '';
+    const afterBacklinkStart = backlinkStartParts.join(startCommentValue);
+    const backlinkEndParts = afterBacklinkStart.split(endCommentValue);
+    const rawBacklinks = backlinkEndParts.shift() || '';
+    const afterBacklinkEnd = backlinkEndParts.join(endCommentValue);
+    return [rawFrontMatter, beforeBacklinkStart + afterBacklinkEnd, rawBacklinks];
+}
+
+export function readPage(id: PageId, raw: RawPage): Page {
+    raw = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const [rawFrontMatter, markdown, rawBacklinks] = splitRaw(raw);
+    return {
+        id,
+        raw,
+        frontMatter: parseFrontMatter(id, rawFrontMatter),
+        markdown,
+        rawBacklinks,
+    };
+}
+
+export function updateBacklinks(pages: Map<PageId, Page>, page: Page): Page {
     const links = new Map<PageId, Node[]>();
 
     for (const item of pages.values()) {
         if (item.id !== page.id) {
-            const linksInItem = getInternalLinksTo(item.root, page);
+            const linksInItem = getInternalLinksTo(parsePage(page).root, page);
             if (linksInItem.length > 0) {
                 links.set(item.id, linksInItem);
             }
         }
     }
 
-    return { ...page, markdown: setLinkTitles(pages, replaceBacklinks(pages, page.markdown, links)) };
+    return readPage(page.id, setLinkTitles(pages, replaceBacklinks(pages, page.raw, links)));
 }
