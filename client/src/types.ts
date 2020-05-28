@@ -10,3 +10,7 @@ export interface Notification {
     type: 'success' | 'error';
     message: string;
 }
+export interface Route {
+    pageId: PageId;
+    editing: boolean;
+}
