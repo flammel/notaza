@@ -11,7 +11,7 @@ interface Sidebar {
     element: HTMLElement;
 }
 
-export function makeSidebar(pages$: Bacon.Observable<Pages>, refreshBacklinks: () => void): Sidebar {
+export function makeSidebar(pages$: Bacon.Observable<Pages>): Sidebar {
     // Elements
 
     const $pageList = document.createElement('ul');
@@ -33,15 +33,10 @@ export function makeSidebar(pages$: Bacon.Observable<Pages>, refreshBacklinks: (
     $form.appendChild($today);
     $form.appendChild($input);
 
-    const $refreshBacklinks = document.createElement('button');
-    $refreshBacklinks.addEventListener('click', () => refreshBacklinks());
-    $refreshBacklinks.innerText = 'Refresh Backlinks';
-
     const $sidebar = document.createElement('div');
     $sidebar.classList.add('sidebar');
     $sidebar.appendChild($form);
     $sidebar.appendChild($pageList);
-    $sidebar.appendChild($refreshBacklinks);
 
     // Observables
 

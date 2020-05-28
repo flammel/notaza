@@ -14,7 +14,7 @@ const links: MarkdownIt.PluginSimple = (md): void => {
 
                 if (href?.startsWith('./') && href.endsWith('.md')) {
                     token.attrSet('class', existingClasses + ' internal');
-                    token.attrSet('href', href?.slice(0, -3) || '');
+                    token.attrSet('href', href?.slice(2, -3) || '');
                 } else {
                     token.attrSet('target', '_blank');
                     token.attrSet('rel', 'noreferrer noopener');

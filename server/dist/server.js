@@ -33,55 +33,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const ts_data_json_1 = require("ts.data.json");
-const dotenv = __importStar(require("dotenv"));
 const cors_1 = __importDefault(require("cors"));
-const lib_1 = require("./lib");
-dotenv.config();
-const config = {
-    contentDir: process.env.NOTAZA_CONTENT_DIRECTORY,
-    port: process.env.NOTAZA_PORT,
-};
+const path_1 = __importDefault(require("path"));
+const config_1 = __importDefault(require("./config"));
+const storage = __importStar(require("./storage"));
+const backlinks = __importStar(require("./backlinks"));
 const pageDecoder = ts_data_json_1.JsonDecoder.object({
     id: ts_data_json_1.JsonDecoder.string,
     markdown: ts_data_json_1.JsonDecoder.string,
 }, 'Page');
-function getPages() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const fileNames = yield fs_1.default.promises.readdir(config.contentDir);
-        return fileNames
-            .filter((fileName) => !fileName.startsWith('_') && fileName.endsWith('.md'))
-            .map((fileName) => {
-            const filePath = path_1.default.resolve(config.contentDir, fileName);
-            return {
-                id: fileName.substring(0, fileName.length - 3),
-                markdown: fs_1.default.readFileSync(filePath, 'utf-8').replace(/\r\n/g, '\n').replace(/\r/g, '\n'),
-            };
-        });
-    });
-}
-function getParsedPages() {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Map((yield getPages()).map((page) => [page.id, lib_1.parsePage(page)]));
-    });
-}
-function savePage(page) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return fs_1.default.promises.writeFile(path_1.default.resolve(config.contentDir, page.id + '.md'), page.markdown);
-    });
-}
-function deletePage(id) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return fs_1.default.promises.rename(path_1.default.resolve(config.contentDir, id + '.md'), path_1.default.resolve(config.contentDir, '_' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '_' + id + '.md'));
-    });
-}
 const upload = multer_1.default({
     storage: multer_1.default.diskStorage({
         destination: (req, file, cb) => {
-            cb(null, path_1.default.resolve(config.contentDir));
+            cb(null, path_1.default.resolve(config_1.default.contentDir));
         },
         filename: (req, file, cb) => {
             cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + '.' + file.mimetype.split('/').pop());
@@ -102,7 +68,7 @@ app.use(body_parser_1.default.json());
 app.use(cors_1.default());
 app.get('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const pages = yield getPages();
+        const pages = yield storage.getPages();
         res.status(200).json({ success: true, data: pages });
     }
     catch (error) {
@@ -112,9 +78,8 @@ app.get('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* 
 app.put('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const payload = yield pageDecoder.decodePromise(req.body);
-        const pages = yield getParsedPages();
-        const updated = lib_1.updateBacklinks(pages, payload);
-        yield savePage(updated);
+        yield storage.savePage(payload);
+        const updated = yield backlinks.update(payload);
         res.status(200).json({ success: true, data: updated });
     }
     catch (error) {
@@ -123,20 +88,7 @@ app.put('/api/pages', (req, res) => __awaiter(void 0, void 0, void 0, function* 
 }));
 app.delete('/api/pages/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield deletePage(req.params.id);
-        res.status(200).json({ success: true });
-    }
-    catch (error) {
-        res.status(500).json({ success: false, error });
-    }
-}));
-app.post('/api/backlinks', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const pages = yield getParsedPages();
-        for (const page of pages.values()) {
-            const updated = lib_1.updateBacklinks(pages, page);
-            yield savePage(updated);
-        }
+        yield storage.deletePage(req.params.id);
         res.status(200).json({ success: true });
     }
     catch (error) {
@@ -153,7 +105,7 @@ app.post('/api/files', (req, res) => {
         }
     });
 });
-app.listen(config.port, () => {
-    console.log('Started server with config', config);
+app.listen(config_1.default.port, () => {
+    console.log('Started server with config', config_1.default);
 });
 //# sourceMappingURL=server.js.map

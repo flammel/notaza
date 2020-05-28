@@ -22,11 +22,17 @@ function urlToId(url: string): PageId {
 const api = makeApi(window.localStorage.getItem('apiUri') ?? '');
 const renderer = makeRenderer();
 const loadedPages$ = new Bacon.Bus<Pages>();
-const savedPages$ = new Bacon.Bus<Page>();
+const savedPages$ = new Bacon.Bus<Pages>();
 const pages$ = Bacon.update<Pages>(
     [],
-    [loadedPages$, (_prev, loaded): Pages => loaded],
-    [savedPages$, (prev, saved): Pages => prev.filter((page) => page.id !== saved.id).concat([saved])],
+    [loadedPages$, (_prev, loaded: Pages): Pages => loaded],
+    [
+        savedPages$,
+        (prev, saved: Pages): Pages => {
+            const savedIds = new Set(saved.map((page) => page.id));
+            return prev.filter((page) => !savedIds.has(page.id)).concat(saved);
+        },
+    ],
 );
 const url$ = new Bacon.Bus<string>();
 const route$ = url$
@@ -35,7 +41,6 @@ const route$ = url$
         editing: false,
     }))
     .toProperty();
-route$.onValue((val) => console.log(val));
 
 // Global event handlers
 
@@ -58,12 +63,12 @@ const renderPage = (page: Page): string => {
 };
 const savePage = (page: Page, notify: (notification: Notification) => void): void => {
     api.savePage(page)
-        .then((newPage) => {
+        .then((updated) => {
             notify({
                 type: 'success',
                 message: 'saved',
             });
-            savedPages$.push(newPage);
+            savedPages$.push(updated);
         })
         .catch(() => {
             notify({
@@ -72,13 +77,8 @@ const savePage = (page: Page, notify: (notification: Notification) => void): voi
             });
         });
 };
-const refreshBacklinks = (notify: (notification: Notification) => void): void => {
-    api.refreshBacklinks()
-        .then(() => notify({ type: 'success', message: 'refreshed' }))
-        .catch(() => notify({ type: 'error', message: 'refresh failed' }));
-};
 
-const app = makeApp(pages$, route$, renderPage, savePage, refreshBacklinks);
+const app = makeApp(pages$, route$, renderPage, savePage);
 document.getElementById('container')?.appendChild(app.element);
 url$.push(window.location.pathname);
 api.loadPages().then((pages) => loadedPages$.push(pages));

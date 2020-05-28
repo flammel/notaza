@@ -5,16 +5,14 @@ interface ApiPage {
     markdown: string;
 }
 type UploadedFile = { filename: string };
-type SaveResult = { success: true; data: ApiPage } | { success: false; error: string };
+type SaveResult = { success: true; data: ApiPage[] } | { success: false; error: string };
 type DeleteResult = { success: boolean };
-type RefreshBacklinksResult = { success: boolean };
 
 export interface Api {
     loadPages(): Promise<Pages>;
-    savePage(page: Page): Promise<Page>;
+    savePage(page: Page): Promise<Pages>;
     deletePage(page: Page): Promise<DeleteResult>;
     uploadFile(file: File): Promise<UploadedFile>;
-    refreshBacklinks(): Promise<RefreshBacklinksResult>;
 }
 
 export function makeApi(url: string): Api {
@@ -24,7 +22,7 @@ export function makeApi(url: string): Api {
                 .then((r) => r.json())
                 .then((json: { data: ApiPage[] }) => json.data.map(readPage));
         },
-        savePage(page: Page): Promise<Page> {
+        savePage(page: Page): Promise<Pages> {
             return fetch(url + '/pages', {
                 method: 'PUT',
                 headers: {
@@ -35,7 +33,7 @@ export function makeApi(url: string): Api {
                 .then((res) => res.json())
                 .then((json: SaveResult) => {
                     if (json.success) {
-                        return Promise.resolve(readPage(json.data));
+                        return Promise.resolve(json.data.map(readPage));
                     } else {
                         return Promise.reject();
                     }
@@ -61,13 +59,6 @@ export function makeApi(url: string): Api {
             })
                 .then((res: Response) => res.json())
                 .then((json: { data: UploadedFile }) => json.data);
-        },
-        refreshBacklinks(): Promise<RefreshBacklinksResult> {
-            return fetch(url + '/backlinks', {
-                method: 'POST',
-            })
-                .then((res: Response) => res.json())
-                .then((json: RefreshBacklinksResult) => json);
         },
     };
 }

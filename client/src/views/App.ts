@@ -32,13 +32,11 @@ export function makeApp(
     route$: Bacon.Observable<Route>,
     renderPage: (page: Page) => string,
     savePage: (page: Page, notify: (notification: Notification) => void) => void,
-    refreshBacklinks: (notify: (notification: Notification) => void) => void,
 ): App {
     // Observables
 
     const notifications$ = new Bacon.Bus<Notification>();
     const pageViewState$ = route$.combine(pages$, (route, pages) => {
-        console.log([route, pages]);
         const found = findPage(route.pageId, pages);
         if (found) {
             return { page: found, editing: false };
@@ -54,7 +52,7 @@ export function makeApp(
     // Components
 
     const notifications = makeNotifications(notifications$);
-    const sidebar = makeSidebar(pages$, () => refreshBacklinks(notify));
+    const sidebar = makeSidebar(pages$);
     const pageView = makePageView(pageViewState$, renderPage, (page) => savePage(page, notify));
 
     // Elements
