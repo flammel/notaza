@@ -78,10 +78,12 @@ function getSearchable(markdown: string): string[] {
 }
 
 function readPage({ id, markdown }: ApiPage): Page {
+    const afterFrontmatter = markdown.split('\n---\n').pop() || markdown;
+    const beforeBacklinks = afterFrontmatter.split('\n<!-- notaza backlinks start -->\n').shift() || afterFrontmatter;
     return {
         id,
         title: getTitle(markdown) || id,
-        markdown,
+        markdown: beforeBacklinks,
         searchable: getSearchable(markdown),
     };
 }

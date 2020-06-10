@@ -1,6 +1,5 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
-import * as frontmatter from 'markdown-it-front-matter';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -32,11 +31,7 @@ export interface Renderer {
 }
 
 export function makeRenderer(): Renderer {
-    const mdIt = MarkdownIt({ html: true, linkify: true })
-        .use(links)
-        .use(frontmatter.default, () => {
-            return;
-        });
+    const mdIt = MarkdownIt({ html: true, linkify: true }).use(links);
     return {
         render: (markdown: string): string => {
             return mdIt.render(markdown);
