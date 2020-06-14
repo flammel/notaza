@@ -1,48 +1,31 @@
-import './index.scss';
 import { makeApi } from './Api';
 import { makeApp } from './views/App';
 import { makeRenderer } from './Renderer';
-import * as Bacon from 'baconjs';
-import { Pages, Page, Notification, PageId } from './types';
-import { dateToString } from './util';
+import { AppState } from './types';
+import { createStore } from './store/store';
+import * as actions from './store/actions';
 
-function urlToId(url: string): PageId {
-    if (url.startsWith('/')) {
-        url = url.substring(1);
-    }
-    if (url.startsWith('./')) {
-        url = url.substring(2);
-    }
-    if (url === '') {
-        return dateToString(new Date());
-    }
-    return url;
-}
+import './index.scss';
+import { setUrl } from './store/actions';
 
 const api = makeApi(window.localStorage.getItem('apiUri') ?? '');
 const renderer = makeRenderer();
-const loadedPages$ = new Bacon.Bus<Pages>();
-const savedPages$ = new Bacon.Bus<Pages>();
-const pages$ = Bacon.update<Pages>(
-    [],
-    [loadedPages$, (_prev, loaded: Pages): Pages => loaded],
-    [
-        savedPages$,
-        (prev, saved: Pages): Pages => {
-            const savedIds = new Set(saved.map((page) => page.id));
-            return prev.filter((page) => !savedIds.has(page.id)).concat(saved);
-        },
-    ],
-);
-const url$ = new Bacon.Bus<string>();
-const route$ = url$
-    .map((url) => ({
-        pageId: urlToId(url),
-        editing: false,
-    }))
-    .toProperty();
 
-// Global event handlers
+const initialState: AppState = {
+    notifications: [],
+    pages: [],
+    query: '',
+    urlId: '',
+    editing: [],
+    editedContent: '',
+};
+
+const store = createStore(
+    initialState,
+    on(actions.setPages, (state, action) => {
+        action.pages
+    })
+);
 
 document.addEventListener('click', (event) => {
     if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
@@ -50,38 +33,18 @@ document.addEventListener('click', (event) => {
         const href = event.target.getAttribute('href');
         if (href) {
             window.history.pushState(null, href, href);
-            url$.push(href);
+            store.dispatch(actions.setUrl({ url: href }));
         }
     }
 });
 window.addEventListener('popstate', () => {
-    url$.push(window.location.pathname);
+    store.dispatch(actions.setUrl({ url: window.location.pathname }));
 });
 
-const renderPage = (page: Page): string => {
-    return `<h1>${page.title}</h1>${renderer.render(page.markdown)}`;
-};
-const savePage = (page: Page, notify: (notification: Notification) => void): void => {
-    api.savePage(page)
-        .then((updated) => {
-            notify({
-                type: 'success',
-                message: 'saved',
-            });
-            savedPages$.push(updated);
-        })
-        .catch(() => {
-            notify({
-                type: 'error',
-                message: 'failed',
-            });
-        });
-};
-
-const app = makeApp(pages$, route$, renderPage, savePage);
+const app = makeApp(store);
 document.getElementById('container')?.appendChild(app.element);
-url$.push(window.location.pathname);
-api.loadPages().then((pages) => loadedPages$.push(pages));
+store.dispatch(actions.setUrl({ url: window.location.pathname }));
+api.loadPages().then((pages) => store.dispatch(actions.setPages({ pages })));
 
 // PWA
 

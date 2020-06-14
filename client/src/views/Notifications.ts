@@ -1,23 +1,29 @@
+import { Observable } from 'rxjs';
 import { Notification } from '../types';
-import * as Bacon from 'baconjs';
 
-interface Notifications {
-    element: HTMLElement;
+export interface NotificationsViewState {
+    notifications: Notification[];
 }
 
-export function makeNotifications(notifications$: Bacon.Observable<Notification>): Notifications {
+interface NotificationsView {
+    element: HTMLElement;
+}
+export function makeNotificationsView(state$: Observable<NotificationsViewState>): NotificationsView {
     const $notifications = document.createElement('div');
     $notifications.classList.add('notifications');
 
-    notifications$.onValue((notification) => {
-        const $notification = document.createElement('div');
-        $notification.classList.add('notification');
-        $notification.innerText = notification.message;
-        $notification.classList.add(notification.type === 'error' ? 'notification--error' : 'notification--success');
-        $notifications.appendChild($notification);
-        setTimeout(() => {
-            $notifications.removeChild($notification);
-        }, 3000);
+    state$.subscribe((state) => {
+        console.log('new notifications state', state);
+        $notifications.innerHTML = '';
+        for (const notification of state.notifications) {
+            const $notification = document.createElement('div');
+            $notification.classList.add('notification');
+            $notification.innerText = notification.message;
+            $notification.classList.add(
+                notification.type === 'error' ? 'notification--error' : 'notification--success',
+            );
+            $notifications.appendChild($notification);
+        }
     });
 
     return {

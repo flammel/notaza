@@ -1,21 +1,16 @@
-import { BlockPath } from './types';
-
-function leftPad(x: number): string {
+function leftPad(x) {
     return ('0' + x).substr(-2);
 }
-
-export function dateToString(date: Date): string {
+export function dateToString(date) {
     return date.getFullYear() + '-' + leftPad(date.getMonth() + 1) + '-' + leftPad(date.getDate());
 }
-
-export function dateTimeToString(date: Date): string {
+export function dateTimeToString(date) {
     return dateToString(date) + ' ' + leftPad(date.getHours()) + ':' + leftPad(date.getMinutes());
 }
-
 /**
  * https://stackoverflow.com/a/1349426
  */
-export function makeId(): string {
+export function makeId() {
     let result = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const charactersLength = characters.length;
@@ -24,3 +19,4 @@ export function makeId(): string {
     }
     return result;
 }
+//# sourceMappingURL=util.js.map

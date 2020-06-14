@@ -174,9 +174,17 @@ a.current {
 }
 
 .editor {
+    @include font;
     width: 100%;
     display: block;
-    height: 30rem;
     box-sizing: border-box;
-    resize: vertical;
+    resize: none;
+    border: 0;
+    background: yellow;
+    overflow: hidden;
+    padding: 0;
+
+    &:focus {
+        outline: none;
+    }
 }
