@@ -1,31 +1,25 @@
 import { makeApi } from './Api';
-import { makeApp } from './views/App';
-import { makeRenderer } from './Renderer';
+import { AppView } from './views/App';
 import { AppState } from './types';
 import { createStore } from './store/store';
 import * as actions from './store/actions';
+import { reducers } from './store/reducers';
 
 import './index.scss';
-import { setUrl } from './store/actions';
 
 const api = makeApi(window.localStorage.getItem('apiUri') ?? '');
-const renderer = makeRenderer();
 
 const initialState: AppState = {
     notifications: [],
     pages: [],
-    query: '',
-    urlId: '',
-    editing: [],
-    editedContent: '',
+    sidebar: {
+        query: '',
+    },
+    activePageId: undefined,
+    editing: undefined,
 };
 
-const store = createStore(
-    initialState,
-    on(actions.setPages, (state, action) => {
-        action.pages
-    })
-);
+const store = createStore(initialState, ...reducers);
 
 document.addEventListener('click', (event) => {
     if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
@@ -41,8 +35,7 @@ window.addEventListener('popstate', () => {
     store.dispatch(actions.setUrl({ url: window.location.pathname }));
 });
 
-const app = makeApp(store);
-document.getElementById('container')?.appendChild(app.element);
+document.getElementById('container')?.appendChild(new AppView(store));
 store.dispatch(actions.setUrl({ url: window.location.pathname }));
 api.loadPages().then((pages) => store.dispatch(actions.setPages({ pages })));
 

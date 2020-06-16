@@ -1,3 +1,6 @@
+import { Store } from './store/store';
+import { Observable } from 'rxjs';
+
 export interface Block {
     content: string;
     children: Block[];
@@ -15,11 +18,15 @@ export interface Notification {
     message: string;
 }
 export interface AppState {
-    query: string;
-    pages: Pages;
+    sidebar: {
+        query: string;
+    };
     notifications: Notification[];
-    urlId: string;
-    editing: BlockPath;
-    editedContent: string;
+    pages: Pages;
+    activePageId?: string;
+    editing?: {
+        blockPath: BlockPath;
+    };
 }
 export type BlockPath = number[];
+export type AppStore = Store<AppState>;

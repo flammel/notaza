@@ -1,32 +1,28 @@
-import { Observable } from 'rxjs';
-import { Notification } from '../types';
+import { Notification, AppStore, AppState } from '../types';
 
-export interface NotificationsViewState {
-    notifications: Notification[];
+function selectNotifications(state: AppState): Notification[] {
+    return state.notifications;
 }
 
-interface NotificationsView {
-    element: HTMLElement;
-}
-export function makeNotificationsView(state$: Observable<NotificationsViewState>): NotificationsView {
-    const $notifications = document.createElement('div');
-    $notifications.classList.add('notifications');
+export class NotificationsView extends HTMLDivElement {
+    constructor(store: AppStore) {
+        super();
 
-    state$.subscribe((state) => {
-        console.log('new notifications state', state);
-        $notifications.innerHTML = '';
-        for (const notification of state.notifications) {
-            const $notification = document.createElement('div');
-            $notification.classList.add('notification');
-            $notification.innerText = notification.message;
-            $notification.classList.add(
-                notification.type === 'error' ? 'notification--error' : 'notification--success',
-            );
-            $notifications.appendChild($notification);
-        }
-    });
+        this.classList.add('notifications');
 
-    return {
-        element: $notifications,
-    };
+        store.select(selectNotifications).subscribe((notifications) => {
+            console.log('new notifications', notifications);
+            this.innerHTML = '';
+            for (const notification of notifications) {
+                const $notification = document.createElement('div');
+                $notification.classList.add('notification');
+                $notification.innerText = notification.message;
+                $notification.classList.add(
+                    notification.type === 'error' ? 'notification--error' : 'notification--success',
+                );
+                this.appendChild($notification);
+            }
+        });
+    }
 }
+customElements.define('n-notifications', NotificationsView, { extends: 'div' });

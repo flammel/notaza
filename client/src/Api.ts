@@ -1,4 +1,4 @@
-import { Pages, Page } from './types';
+import { Pages, Page, Block } from './types';
 
 interface ApiPage {
     id: string;
@@ -71,19 +71,70 @@ function getTitle(markdown: string): string | undefined {
     return undefined;
 }
 
-function getSearchable(markdown: string): string[] {
-    const afterFrontmatter = markdown.split('\n---\n').pop() || markdown;
-    const beforeBacklinks = afterFrontmatter.split('\n<!-- notaza backlinks start -->\n').shift() || afterFrontmatter;
-    return beforeBacklinks.split('\n').map((line) => line.replace('*', '').trim());
-}
-
 function readPage({ id, markdown }: ApiPage): Page {
     const afterFrontmatter = markdown.split('\n---\n').pop() || markdown;
-    const beforeBacklinks = afterFrontmatter.split('\n<!-- notaza backlinks start -->\n').shift() || afterFrontmatter;
+    const shifted = afterFrontmatter.split('\n<!-- notaza backlinks start -->\n').shift();
+    const beforeBacklinks = shifted === undefined ? afterFrontmatter : shifted;
+    let blocks: Block[];
+    try {
+        blocks = parseBlocks(beforeBacklinks);
+    } catch (e) {
+        console.error(e);
+        blocks = [{ content: 'parse error: ' + (e instanceof Error ? e.message : ''), children: [] }];
+    }
     return {
         id,
         title: getTitle(markdown) || id,
-        markdown: beforeBacklinks,
-        searchable: getSearchable(markdown),
+        blocks: blocks,
+        created: '',
     };
+}
+
+function parseBlocks(markdown: string): Block[] {
+    const lines = markdown.split('\n');
+    while (lines[0] !== undefined && lines[0].trim() === '') {
+        lines.shift();
+    }
+    while (lines[lines.length - 1] !== undefined && lines[lines.length - 1].trim() === '') {
+        lines.pop();
+    }
+
+    const groups: [number, string[]][] = [];
+    for (const line of lines) {
+        if (line.match(/^ *\* .*$/)) {
+            const indentation = line.indexOf('*');
+            groups.push([indentation, [line.substring(indentation + 2)]]);
+        } else {
+            const group = groups[groups.length - 1];
+            if (!group) {
+                throw new Error('No group');
+            }
+            group[1].push(line.substring(group[0] + 2));
+        }
+    }
+
+    const rootBlock: Block & { indentation: number } = { content: '', children: [], indentation: -1 };
+    const stack: Array<Block & { indentation: number }> = [rootBlock];
+    for (const group of groups) {
+        const peek = stack[stack.length - 1];
+        const block = { content: group[1].join('\n'), children: [], indentation: group[0] };
+        if (block.indentation > peek.indentation) {
+            peek.children.push(block);
+            stack.push(block);
+        } else {
+            let parent = stack.pop();
+            while (parent && block.indentation <= parent.indentation) {
+                parent = stack.pop();
+            }
+            if (!parent) {
+                throw new Error('No parent');
+            }
+            parent.children.push(block);
+            stack.push(parent);
+            stack.push(block);
+        }
+        stack.push(block);
+    }
+
+    return rootBlock.children;
 }

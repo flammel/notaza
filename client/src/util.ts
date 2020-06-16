@@ -1,5 +1,3 @@
-import { BlockPath } from './types';
-
 function leftPad(x: number): string {
     return ('0' + x).substr(-2);
 }

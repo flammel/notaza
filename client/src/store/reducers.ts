@@ -1,4 +1,8 @@
-
+import { produce } from 'immer';
+import * as actions from './actions';
+import { on, Reducer } from './store';
+import { AppState, Page, BlockPath, Block, PageId, Pages } from '../types';
+import { dateToString } from '../util';
 
 function getBlock(page: Page, path: BlockPath): Block | undefined {
     let blocks = page.blocks;
@@ -11,38 +15,19 @@ function getBlock(page: Page, path: BlockPath): Block | undefined {
     }
     return undefined;
 }
-export function startEditing(blockPath: BlockPath): Command {
-    return (oldState): AppState =>
-        produce(oldState, (draft) => {
-            draft.editing = blockPath;
-            draft.editedContent = getBlock(draft.pages[0], blockPath)?.content || '';
-            return draft;
-        });
+
+function getPage(pages: Pages, id: PageId | undefined): Page | undefined {
+    if (id !== undefined) {
+        for (const page of pages) {
+            if (page.id === id) {
+                return page;
+            }
+        }
+    }
+    return undefined;
 }
 
-export function stopEditing(): Command {
-    return makeCommand((oldState) => {
-        // const block =
-        oldState.editing = [];
-        oldState.editedContent = '';
-    });
-}
-
-export function setPages(pages: Pages): Command {
-    return (oldState): AppState =>
-        produce(oldState, (draft) => {
-            draft.pages = pages;
-            return draft;
-        });
-}
-
-export function setEditedContent(content: string): Command {
-    return makeCommand((oldState) => {
-        oldState.editedContent = content;
-    });
-}
-
-function urlToId(url: string): PageId {
+function urlToId(url: string): string {
     if (url.startsWith('/')) {
         url = url.substring(1);
     }
@@ -54,11 +39,44 @@ function urlToId(url: string): PageId {
     }
     return url;
 }
-export function setUrl(url: string): Command {
-    return (oldState): AppState =>
-        produce(oldState, (draft) => {
-            draft.urlId = urlToId(url);
-            draft.editing = [];
-            return draft;
+
+export const reducers: Reducer<AppState>[] = [
+    on(actions.setPages, (state, action) => {
+        return { ...state, pages: action.pages };
+    }),
+    on(actions.setUrl, (state, action) => {
+        return { ...state, activePageId: urlToId(action.url), editing: undefined };
+    }),
+    on(actions.setEditedContent, (state, action) => {
+        return { ...state, editedContent: action.content };
+    }),
+    on(actions.stopEditing, (state) => {
+        return produce(state, (draft) => {
+            if (draft.editing && draft.activePageId) {
+                // const page = getPage(draft.pages, draft.activePageId);
+                // if (page) {
+                //     const block = getBlock(page, draft.editing.blockPath);
+                //     if (block) {
+                //         block.content = draft.editing.content;
+                //     }
+                // }
+                draft.editing = undefined;
+            }
         });
-}
+    }),
+    on(actions.startEditing, (state, action) => {
+        const page = getPage(state.pages, state.activePageId);
+        if (!page) {
+            return state;
+        }
+        return {
+            ...state,
+            editing: {
+                blockPath: action.blockPath,
+            },
+        };
+    }),
+    on(actions.updateQuery, (state, action) => {
+        return { ...state, sidebar: { query: action.query } };
+    }),
+];
