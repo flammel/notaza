@@ -1,4 +1,5 @@
 import { AppState, AppStore } from '../types';
+import * as actions from '../store/actions';
 
 interface SearchResult {
     url: string;
@@ -55,6 +56,9 @@ export class SidebarView extends HTMLDivElement {
 
         const $input = document.createElement('input');
         $input.setAttribute('placeholder', 'Search');
+        $input.addEventListener('input', () => {
+            store.dispatch(actions.updateQuery({ query: $input.value }));
+        });
 
         const $today = document.createElement('a');
         $today.setAttribute('href', '/');
