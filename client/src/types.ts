@@ -1,23 +1,26 @@
-import { Store } from './store/store';
-import { Observable } from 'rxjs';
-
-export interface Block {
-    content: string;
+export interface BlockContainer {
     children: Block[];
 }
-export interface Page {
+export interface Block extends BlockContainer {
+    content: string;
+}
+export type BlockPath = number[];
+
+export interface Page extends BlockContainer {
     id: PageId;
     title: string;
     created: string;
-    blocks: Block[];
 }
 export type Pages = Page[];
 export type PageId = string;
+
 export interface Notification {
     type: 'success' | 'error';
     message: string;
 }
-export interface AppState {
+
+export type Action = (state: State) => State;
+export interface State {
     sidebar: {
         query: string;
     };
@@ -28,5 +31,3 @@ export interface AppState {
         blockPath: BlockPath;
     };
 }
-export type BlockPath = number[];
-export type AppStore = Store<AppState>;

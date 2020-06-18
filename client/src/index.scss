@@ -188,3 +188,10 @@ a.current {
         outline: none;
     }
 }
+
+.block__content::before {
+    content: '\200B';
+}
+.block--editing .block__content::before {
+    content: '';
+}

@@ -65,7 +65,7 @@ export function makeApi(url: string): Api {
 
 function getTitle(markdown: string): string | undefined {
     const match = markdown.match(/^title: (.*)$/gm);
-    if (match && match[0]) {
+    if (match !== null && match[0] !== undefined) {
         return match[0].substring('title: '.length);
     }
     return undefined;
@@ -82,10 +82,13 @@ function readPage({ id, markdown }: ApiPage): Page {
         console.error(e);
         blocks = [{ content: 'parse error: ' + (e instanceof Error ? e.message : ''), children: [] }];
     }
+    if (blocks.length === 0) {
+        blocks = [{ content: '', children: [] }];
+    }
     return {
         id,
         title: getTitle(markdown) || id,
-        blocks: blocks,
+        children: blocks,
         created: '',
     };
 }
@@ -101,12 +104,12 @@ function parseBlocks(markdown: string): Block[] {
 
     const groups: [number, string[]][] = [];
     for (const line of lines) {
-        if (line.match(/^ *\* .*$/)) {
+        if (line.match(/^ *\* .*$/) !== null) {
             const indentation = line.indexOf('*');
             groups.push([indentation, [line.substring(indentation + 2)]]);
         } else {
             const group = groups[groups.length - 1];
-            if (!group) {
+            if (group === undefined) {
                 throw new Error('No group');
             }
             group[1].push(line.substring(group[0] + 2));
@@ -123,10 +126,10 @@ function parseBlocks(markdown: string): Block[] {
             stack.push(block);
         } else {
             let parent = stack.pop();
-            while (parent && block.indentation <= parent.indentation) {
+            while (parent !== undefined && block.indentation <= parent.indentation) {
                 parent = stack.pop();
             }
-            if (!parent) {
+            if (parent === undefined) {
                 throw new Error('No parent');
             }
             parent.children.push(block);

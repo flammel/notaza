@@ -1,17 +1,17 @@
-import { Notification, AppStore, AppState } from '../types';
+import { Notification, State } from '../types';
+import { Store } from '../store';
 
-function selectNotifications(state: AppState): Notification[] {
+function selectNotifications(state: State): Notification[] {
     return state.notifications;
 }
 
 export class NotificationsView extends HTMLDivElement {
-    constructor(store: AppStore) {
+    constructor(store: Store) {
         super();
 
         this.classList.add('notifications');
 
         store.select(selectNotifications).subscribe((notifications) => {
-            console.log('new notifications', notifications);
             this.innerHTML = '';
             for (const notification of notifications) {
                 const $notification = document.createElement('div');

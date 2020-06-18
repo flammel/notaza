@@ -1,10 +1,10 @@
-import { AppStore } from '../types';
 import { NotificationsView } from './Notifications';
 import { SidebarView } from './Sidebar';
 import { PageView } from './Page';
+import { Store } from '../store';
 
 export class AppView extends HTMLDivElement {
-    constructor(store: AppStore) {
+    constructor(store: Store) {
         super();
 
         this.classList.add('app');

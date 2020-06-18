@@ -4,7 +4,7 @@ import * as Token from 'markdown-it/lib/token';
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
         const fn = (token: Token): void => {
-            if (token.children) {
+            if (token.children !== null) {
                 token.children.map(fn);
             }
             if (token.type === 'link_open') {
@@ -26,15 +26,10 @@ const links: MarkdownIt.PluginSimple = (md): void => {
     });
 };
 
-export interface Renderer {
-    render: (markdown: string) => string;
-}
+export class Renderer {
+    private readonly mdIt = MarkdownIt({ html: true, linkify: true }).use(links);
 
-export function makeRenderer(): Renderer {
-    const mdIt = MarkdownIt({ html: true, linkify: true }).use(links);
-    return {
-        render: (markdown: string): string => {
-            return mdIt.render(markdown);
-        },
-    };
+    public render(markdown: string): string {
+        return this.mdIt.renderInline(markdown);
+    }
 }

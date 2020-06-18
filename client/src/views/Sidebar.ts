@@ -1,5 +1,6 @@
-import { AppState, AppStore } from '../types';
-import * as actions from '../store/actions';
+import { State } from '../types';
+import * as actions from '../actions';
+import { Store } from '../store';
 
 interface SearchResult {
     url: string;
@@ -7,8 +8,8 @@ interface SearchResult {
     matches: string[];
 }
 
-function selectResults(state: AppState): SearchResult[] {
-    return state.pages
+function selectResults(state: State): SearchResult[] {
+    return [...state.pages.values()]
         .filter((page) => page.title.toLowerCase().includes(state.sidebar.query.toLowerCase()))
         .map((page) => ({
             title: page.title,
@@ -48,7 +49,7 @@ class SearchResultView extends HTMLLIElement {
 customElements.define('n-search-result', SearchResultView, { extends: 'li' });
 
 export class SidebarView extends HTMLDivElement {
-    constructor(store: AppStore) {
+    constructor(store: Store) {
         super();
 
         const $pageList = document.createElement('ul');
@@ -57,7 +58,7 @@ export class SidebarView extends HTMLDivElement {
         const $input = document.createElement('input');
         $input.setAttribute('placeholder', 'Search');
         $input.addEventListener('input', () => {
-            store.dispatch(actions.updateQuery({ query: $input.value }));
+            store.dispatch(actions.onQueryChange($input.value));
         });
 
         const $today = document.createElement('a');
@@ -78,7 +79,6 @@ export class SidebarView extends HTMLDivElement {
         this.appendChild($pageList);
 
         store.select(selectResults).subscribe((results) => {
-            console.log('new sidebar results', results);
             const $fragment = document.createDocumentFragment();
             for (const result of results) {
                 $fragment.appendChild(new SearchResultView(result));
