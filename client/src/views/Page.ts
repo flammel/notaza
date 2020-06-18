@@ -1,7 +1,7 @@
 import { Observable, Subject, BehaviorSubject, combineLatest } from 'rxjs';
 import * as _ from 'lodash';
-import { Block, BlockPath, State, BlockContainer, PageId } from '../types';
-import { map, distinctUntilChanged, pluck } from 'rxjs/operators';
+import { Block, BlockPath, State, BlockContainer, PageId, Page } from '../types';
+import { map, distinctUntilChanged, pluck, mapTo, withLatestFrom, share } from 'rxjs/operators';
 import { Store } from '../store';
 import * as actions from '../actions';
 import { Renderer } from '../Renderer';
@@ -10,11 +10,8 @@ interface BlockForView {
     rawContent: string;
     renderedContent: string;
     editing: boolean;
-    children: BlockForView[];
     path: BlockPath;
 }
-
-type BlockWithoutChildren = Omit<BlockForView, 'children'>;
 
 function forView(
     block: Block,
@@ -27,7 +24,6 @@ function forView(
         renderedContent: render(block.content),
         editing: _.isEqual(path, editing),
         path,
-        children: block.children.map((child, index) => forView(child, [...path, index], editing, render)),
     };
 }
 
@@ -88,7 +84,7 @@ class BlockContentView extends HTMLDivElement {
     private path: BlockPath | undefined;
     private $textarea: HTMLTextAreaElement | undefined;
 
-    constructor(store: Store, block$: Observable<BlockWithoutChildren>) {
+    constructor(store: Store, path$: Observable<BlockPath>) {
         super();
         this.classList.add('block__content');
         this.addEventListener('click', (event) => {
@@ -100,32 +96,67 @@ class BlockContentView extends HTMLDivElement {
                 }
             }
         });
-        block$.pipe(distinctUntilChanged(_.isEqual)).subscribe((block) => {
-            this.path = block.path;
-            if (block.editing) {
-                if (!this.$textarea) {
-                    const $textarea = document.createElement('textarea');
-                    $textarea.classList.add('editor');
-                    $textarea.innerHTML = block.rawContent;
-                    $textarea.addEventListener('input', () => {
-                        store.dispatch(actions.onEditorInput(block.path, $textarea.value));
+
+        store.select((state) => state.pages.find((page) => page.id === state.activePageId)).subscribe((p) => console.log('p', p));
+        path$
+            .pipe(
+                map((path) => {
+                    console.log('content path before', path);
+                    return path;
+                }),
+                withLatestFrom(store.select((state) => state.pages.find((page) => page.id === state.activePageId))),
+                map(([path, page]) => {
+                    console.log('content path after', path);
+                    return [path, page] as [BlockPath, Page | undefined];
+                }),
+                map(([path, page]) => {
+                    console.log('content combine');
+                    if (page !== undefined) {
+                        const block = getBlock(page, path);
+                        if (block !== undefined) {
+                            return {
+                                editing: false,
+                                path,
+                                rawContent: block.content,
+                                renderedContent: block.content,
+                            };
+                        }
+                    }
+                    return {
+                        editing: false,
+                        path,
+                        rawContent: '',
+                        renderedContent: '',
+                    };
+                }),
+            )
+            .subscribe((block: BlockForView) => {
+                console.log('content path', block.path);
+                this.path = block.path;
+                if (block.editing) {
+                    if (!this.$textarea) {
+                        const $textarea = document.createElement('textarea');
+                        $textarea.classList.add('editor');
+                        $textarea.innerHTML = block.rawContent;
+                        $textarea.addEventListener('input', () => {
+                            store.dispatch(actions.onEditorInput(block.path, $textarea.value));
+                            resize($textarea);
+                        });
+                        $textarea.addEventListener('keydown', (event) =>
+                            handleEditorKeyDown(event, $textarea, store, block),
+                        );
+                        this.innerHTML = '';
+                        this.appendChild($textarea);
+                        $textarea.focus();
+                        $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
                         resize($textarea);
-                    });
-                    $textarea.addEventListener('keydown', (event) =>
-                        handleEditorKeyDown(event, $textarea, store, block),
-                    );
-                    this.innerHTML = '';
-                    this.appendChild($textarea);
-                    $textarea.focus();
-                    $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
-                    resize($textarea);
-                    this.$textarea = $textarea;
+                        this.$textarea = $textarea;
+                    }
+                } else {
+                    this.innerHTML = block.renderedContent;
+                    this.$textarea = undefined;
                 }
-            } else {
-                this.innerHTML = block.renderedContent;
-                this.$textarea = undefined;
-            }
-        });
+            });
     }
 
     public connectedCallback(): void {
@@ -139,48 +170,76 @@ class BlockContentView extends HTMLDivElement {
 customElements.define('n-block-content', BlockContentView, { extends: 'div' });
 
 class BlockView extends HTMLLIElement {
-    constructor(store: Store, block$: Observable<BlockForView>) {
+    constructor(store: Store, path$: Observable<BlockPath>) {
         super();
         this.classList.add('block');
-        const onlyChildren$ = block$.pipe(pluck('children'), distinctUntilChanged(_.isEqual));
-        const withoutChildren$ = block$.pipe(
-            map((block) => _.omit(block, 'children')),
-            distinctUntilChanged(_.isEqual),
-        );
-        withoutChildren$.subscribe(({ editing }) =>
-            editing ? this.classList.add('block--editing') : this.classList.remove('block--editing'),
-        );
-        this.appendChild(new BlockContentView(store, withoutChildren$));
-        this.appendChild(new BlockList(store, onlyChildren$));
+        path$.subscribe((path) => console.log('blockv iew path' , path));
+        this.appendChild(new BlockContentView(store, path$));
+        this.appendChild(new BlockList(store, path$));
     }
 }
 customElements.define('n-block', BlockView, { extends: 'li' });
 
-class BlockList extends HTMLUListElement {
-    constructor(store: Store, blocks$: Observable<BlockForView[]>) {
-        super();
+function indices<T>(arr: T[]): number[] {
+    return arr.map((_element, index) => index);
+}
 
-        const observables: Subject<BlockForView>[] = [];
-        blocks$.subscribe((blocks) => {
-            for (const [block, observable] of _.zip(blocks, observables)) {
-                if (block) {
-                    if (observable) {
-                        observable.next(block);
+function getBlock(parent: BlockContainer, path: BlockPath): Block | undefined {
+    const head = _.head(path);
+    if (head !== undefined) {
+        const newParent = parent.children[head];
+        if (newParent !== undefined) {
+            const tail = _.tail(path);
+            return tail.length === 0 ? newParent : getBlock(newParent, tail);
+        }
+    }
+}
+
+class BlockList extends HTMLUListElement {
+    constructor(store: Store, path$: Observable<BlockPath>) {
+        super();
+        const observables: Subject<BlockPath>[] = [];
+        combineLatest(
+            path$,
+            store.select((state) => state.pages.find((page) => page.id === state.activePageId)),
+        )
+            .pipe(
+                map(([path, page]) => {
+                    console.log('list combine', [path, page]);
+                    if (page === undefined) {
+                        return [];
                     } else {
-                        const newObservable = new BehaviorSubject<BlockForView>(block);
-                        observables.push(newObservable);
-                        const newView = new BlockView(store, newObservable);
-                        this.appendChild(newView);
-                        newObservable.subscribe({ complete: () => this.removeChild(newView) });
+                        if (path.length === 0) {
+                            return indices(page.children || []).map((index) => [...path, index]);
+                        } else {
+                            return indices(getBlock(page, path)?.children || []).map((index) => [...path, index]);
+                        }
                     }
-                } else {
-                    if (observable) {
-                        observable.complete();
-                        observables.pop();
+                }),
+                share(),
+            )
+            .subscribe((paths) => {
+                console.log('list paths', paths);
+                for (const [path, observable] of _.zip(paths, observables)) {
+                    if (path) {
+                        if (observable) {
+                            observable.next(path);
+                        } else {
+                            const newObservable = new Subject<BlockPath>();
+                            observables.push(newObservable);
+                            const newView = new BlockView(store, newObservable.pipe(share()));
+                            newObservable.next(path);
+                            this.appendChild(newView);
+                            newObservable.subscribe({ complete: () => this.removeChild(newView) });
+                        }
+                    } else {
+                        if (observable) {
+                            observable.complete();
+                            observables.pop();
+                        }
                     }
                 }
-            }
-        });
+            });
     }
 }
 customElements.define('n-block-list', BlockList, { extends: 'ul' });
@@ -225,6 +284,41 @@ function selectBacklinks(state: State): BacklinkPage[] {
     return pagesWithLinks;
 }
 
+class BacklinksView extends HTMLDivElement {
+    constructor(store: Store, block$: Observable<BacklinkPage[]>) {
+        super();
+        this.classList.add('backlinks');
+
+        const $headline = document.createElement('h2');
+        $headline.innerText = 'Backlinks';
+        this.appendChild($headline);
+
+        const $list = document.createElement('ul');
+        this.appendChild($list);
+
+        block$.subscribe((pwbs) => {
+            $list.innerHTML = pwbs
+                .map(
+                    (pwb) => `
+                    <li>
+                        <a href="./${pwb.id}" class="internal">${pwb.title}</a>
+                        <ul>
+                            ${pwb.backlinks
+                                .map(
+                                    (block) => `
+                                <li>${block.content}</li>
+                            `,
+                                )
+                                .join('')}
+                        </ul>
+                    </li>`,
+                )
+                .join('');
+        });
+    }
+}
+customElements.define('n-backlinks', BacklinksView, { extends: 'div' });
+
 export class PageView extends HTMLDivElement {
     constructor(store: Store) {
         super();
@@ -243,7 +337,14 @@ export class PageView extends HTMLDivElement {
         const blocksForView$ = combineLatest(blocks$, editing$).pipe(
             map(([blocks, editing]) => blocksForView(blocks, editing, render)),
         );
-        const backlinks$ = store.select(selectBacklinks);
+        const backlinks$ = store.select(selectBacklinks).pipe(
+            map((pwbs) =>
+                pwbs.map((pwb) => ({
+                    ...pwb,
+                    backlinks: pwb.backlinks.map((block) => ({ ...block, content: render(block.content) })),
+                })),
+            ),
+        );
         backlinks$.subscribe((backlinks) => console.log('backlinks', backlinks));
 
         this.classList.add('page');
@@ -252,11 +353,10 @@ export class PageView extends HTMLDivElement {
         title$.subscribe((title) => {
             $title.innerText = title || '';
         });
-        const $blocks = new BlockList(store, blocksForView$);
 
         this.appendChild($title);
-        this.appendChild($blocks);
-        // this.appendChild($backlinks);
+        this.appendChild(new BlockList(store, page$.pipe(mapTo([]), share())));
+        this.appendChild(new BacklinksView(store, backlinks$));
     }
 }
 customElements.define('n-page', PageView, { extends: 'div' });

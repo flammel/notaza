@@ -28,7 +28,7 @@ export class Store {
     }
 
     public select<SelectionT>(selector: Selector<SelectionT>): Observable<SelectionT> {
-        return this.state$.pipe(map(selector), distinctUntilChanged(_.isEqual));
+        return this.state$.pipe(map(selector), distinctUntilChanged(_.isEqual), share());
     }
 
     public dispatch(action: Action): void {

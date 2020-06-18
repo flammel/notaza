@@ -85,9 +85,9 @@ function readPage({ id, markdown }: ApiPage): Page {
     if (blocks.length === 0) {
         blocks = [{ content: '', children: [] }];
     }
-    blocks.push({ content: 'foo #bar lorem', children: [] });
-    blocks.push({ content: '[] foo #bar lorem', children: [] });
-    blocks.push({ content: '[x] foo #bar lorem', children: [] });
+    // blocks.push({ content: 'foo #bar lorem', children: [] });
+    // blocks.push({ content: '[] foo #bar lorem', children: [] });
+    // blocks.push({ content: '[x] foo #bar lorem', children: [] });
     return {
         id,
         title: getTitle(markdown) || id,
