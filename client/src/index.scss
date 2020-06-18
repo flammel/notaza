@@ -1,6 +1,17 @@
 @import '~katex/dist/katex.css';
-@import './styles/variables.scss';
-@import './styles/page.scss';
+
+@mixin font() {
+    color: $font-color;
+    font-family: sans-serif;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+$page-border-color: rgba(0, 40, 100, 0.12);
+$font-color: #383838;
+$light-blue: #f5f7fb;
+$darker-blue: rgba(70, 127, 207, 0.06);
+$dark-blue: #467fcf;
+$internal-link-color: #007bff;
 
 html {
     @include font;
@@ -149,30 +160,6 @@ a.current {
     font-weight: bold;
 }
 
-.page {
-    position: relative;
-
-    .edit-button {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-    }
-
-    blockquote {
-        margin: 0;
-        border-left: 4px solid #dcdcdc;
-        padding-left: 4px;
-    }
-
-    p {
-        margin: 0;
-    }
-
-    h1 {
-        margin-top: 0;
-    }
-}
-
 .editor {
     @include font;
     width: 100%;
@@ -189,9 +176,158 @@ a.current {
     }
 }
 
-.block__content::before {
-    content: '\200B';
+.page {
+    margin: 1rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    border: 1px solid $page-border-color;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    background: #fff;
+    border-radius: 3px;
+    width: 50rem;
+    position: relative;
+
+    .edit-button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+
+    &__header {
+        display: flex;
+        flex-direction: row;
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: bold;
+            flex-grow: 1;
+
+            input {
+                border: 0;
+                padding: 0;
+                font-size: 2rem;
+                font-weight: bold;
+                width: 100%;
+                &:focus {
+                    outline: none;
+                }
+                &:disabled {
+                    background: #fff;
+                }
+            }
+
+            a {
+                color: $font-color;
+            }
+        }
+
+        .date-link {
+            padding: 0 0.5rem;
+            color: $font-color;
+        }
+
+        button {
+            border: none;
+            background: #fff;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+    }
+
+    &__actions {
+        position: relative;
+        .page__action-list {
+            display: none;
+            button {
+                @include font;
+                padding: 0.5rem;
+                display: block;
+                width: 100%;
+                text-align: left;
+                &:hover {
+                    background: $page-border-color;
+                }
+            }
+        }
+        button {
+            cursor: pointer;
+        }
+        &--open {
+            .page__action-list {
+                display: block;
+                position: absolute;
+                right: 0;
+                top: calc(100% - 0.5rem);
+                width: 5rem;
+                border: 1px solid $page-border-color;
+                border-radius: 3px;
+                padding: 0.5rem;
+                background: #fff;
+                z-index: 10;
+            }
+        }
+    }
+
+    &--raw {
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+        }
+        button {
+            @include font;
+            background: $darker-blue;
+            border: 1px solid $dark-blue;
+            border-radius: 3px;
+            padding: 0.25rem 1rem;
+            margin-top: 1rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+            color: $internal-link-color;
+        }
+    }
+
+    .blocks {
+        margin-top: 1rem;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    h1 {
+        margin-top: 0;
+    }
 }
-.block--editing .block__content::before {
-    content: '';
+
+.block {
+    position: relative;
+    margin: 3px 0;
+
+    &__content {
+        &:empty::before {
+            content: '\200B';
+        }
+    }
+
+    blockquote {
+        margin: 0;
+        border-left: 4px solid $page-border-color;
+        padding-left: 4px;
+    }
+
+    input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    code {
+        background: #f3f3f3;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        padding: 2px 5px;
+        font-family: monospace;
+        white-space: nowrap;
+    }
 }

@@ -4,14 +4,17 @@ import * as _ from 'lodash';
 import produce from 'immer';
 
 import { State, Action } from './types';
+import { Renderer } from './Renderer';
 
 type Selector<SelectionT> = (state: State) => SelectionT;
 
 export class Store {
     private readonly actions$: Subject<Action>;
     private readonly state$: Observable<State>;
+    public readonly renderer: Renderer;
 
     constructor(initialState: State) {
+        this.renderer = new Renderer();
         this.actions$ = new Subject<Action>();
         this.state$ = this.actions$.pipe(
             scan((state, action) => {

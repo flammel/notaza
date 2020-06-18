@@ -17,6 +17,23 @@ export function onBlockClick(blockPath: BlockPath): Action {
     };
 }
 
+export function onCheckboxClick(blockPath: BlockPath): Action {
+    return (state): State => {
+        const page = activePage(state);
+        if (page) {
+            const block = getBlock(page, blockPath);
+            if (block) {
+                if (block.content.startsWith('[] ')) {
+                    block.content = '[x] ' + block.content.substring(3);
+                } else if (block.content.startsWith('[x] ')) {
+                    block.content = '[] ' + block.content.substring(4);
+                }
+            }
+        }
+        return state;
+    };
+}
+
 export function onEditorInput(blockPath: BlockPath, content: string): Action {
     return (state): State => {
         setContent(state, blockPath, content);
@@ -46,7 +63,17 @@ function urlToId(url: string): string {
 
 export function onUrlChange(newUrl: string): Action {
     return (state): State => {
-        state.activePageId = urlToId(newUrl);
+        const newId = urlToId(newUrl);
+        state.activePageId = newId;
+        const page = activePage(state);
+        if (!page) {
+            state.pages.push({
+                id: newId,
+                created: new Date().toISOString(),
+                title: newId,
+                children: [{ content: '', children: [] }],
+            });
+        }
         state.editing = undefined;
         return state;
     };
@@ -216,6 +243,7 @@ export function deleteBlock(path: BlockPath): Action {
         const page = activePage(state);
         if (page) {
             removeBlock(page, path);
+            state.editing = undefined;
         }
         return state;
     };
