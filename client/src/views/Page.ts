@@ -225,6 +225,41 @@ function selectBacklinks(state: State): BacklinkPage[] {
     return pagesWithLinks;
 }
 
+class BacklinksView extends HTMLDivElement {
+    constructor(store: Store, block$: Observable<BacklinkPage[]>) {
+        super();
+        this.classList.add('backlinks');
+
+        const $headline = document.createElement('h2');
+        $headline.innerText = 'Backlinks';
+        this.appendChild($headline);
+
+        const $list = document.createElement('ul');
+        this.appendChild($list);
+
+        block$.subscribe((pwbs) => {
+            $list.innerHTML = pwbs
+                .map(
+                    (pwb) => `
+                    <li>
+                        <a href="./${pwb.id}" class="internal">${pwb.title}</a>
+                        <ul>
+                            ${pwb.backlinks
+                                .map(
+                                    (block) => `
+                                <li>${block.content}</li>
+                            `,
+                                )
+                                .join('')}
+                        </ul>
+                    </li>`,
+                )
+                .join('');
+        });
+    }
+}
+customElements.define('n-backlinks', BacklinksView, { extends: 'div' });
+
 export class PageView extends HTMLDivElement {
     constructor(store: Store) {
         super();
@@ -243,8 +278,14 @@ export class PageView extends HTMLDivElement {
         const blocksForView$ = combineLatest(blocks$, editing$).pipe(
             map(([blocks, editing]) => blocksForView(blocks, editing, render)),
         );
-        const backlinks$ = store.select(selectBacklinks);
-        backlinks$.subscribe((backlinks) => console.log('backlinks', backlinks));
+        const backlinks$ = store.select(selectBacklinks).pipe(
+            map((pwbs) =>
+                pwbs.map((pwb) => ({
+                    ...pwb,
+                    backlinks: pwb.backlinks.map((block) => ({ ...block, content: render(block.content) })),
+                })),
+            ),
+        );
 
         this.classList.add('page');
 
@@ -252,11 +293,10 @@ export class PageView extends HTMLDivElement {
         title$.subscribe((title) => {
             $title.innerText = title || '';
         });
-        const $blocks = new BlockList(store, blocksForView$);
 
         this.appendChild($title);
-        this.appendChild($blocks);
-        // this.appendChild($backlinks);
+        this.appendChild(new BlockList(store, blocksForView$));
+        this.appendChild(new BacklinksView(store, backlinks$));
     }
 }
 customElements.define('n-page', PageView, { extends: 'div' });
