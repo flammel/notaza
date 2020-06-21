@@ -1,10 +1,10 @@
 import { Page, PageId } from './Page';
 import { dateToString } from './util';
 import { Api } from './Api';
-import { Subject } from 'rxjs';
+import { Subject, BehaviorSubject } from 'rxjs';
 
 export class PageRepository {
-    public readonly pagesLoaded$ = new Subject<null>();
+    public readonly pagesLoaded$ = new BehaviorSubject(false);
     public readonly notifications$ = new Subject<{ message: string; type: 'error' | 'success' }>();
     private readonly api: Api;
     private pages: Map<PageId, Page> | undefined;
@@ -15,7 +15,7 @@ export class PageRepository {
 
     public setPages(pages: Page[]): void {
         this.pages = new Map(pages.map((page) => [page.id, page]));
-        this.pagesLoaded$.next(null);
+        this.pagesLoaded$.next(true);
     }
 
     public getAllPages(): Page[] {

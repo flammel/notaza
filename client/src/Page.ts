@@ -15,19 +15,19 @@ export type PageTitle = string;
 
 abstract class BlockParent {
     public children: Block[] = [];
-    public abstract onChange(): void;
+    public abstract onChange(message: string): void;
 
     public prependChild(content: string): Block {
         const block = new Block({ content, children: [] }, this);
         this.children.splice(0, 0, block);
-        this.onChange();
+        this.onChange('prependChild');
         return block;
     }
 
     public appendChild(content: string): Block {
         const block = new Block({ content, children: [] }, this);
         this.children.push(block);
-        this.onChange();
+        this.onChange('appendChild');
         return block;
     }
 
@@ -43,7 +43,7 @@ abstract class BlockParent {
                 this.children.push(block);
             }
         }
-        this.onChange();
+        this.onChange('insertChild');
         return block;
     }
 
@@ -52,7 +52,7 @@ abstract class BlockParent {
         if (index >= 0) {
             this.children.splice(index, 1);
         }
-        this.onChange();
+        this.onChange('removeChild');
     }
 }
 
@@ -67,13 +67,15 @@ export class Block extends BlockParent {
         this.parent = parent;
     }
 
-    public onChange(): void {
-        this.parent?.onChange();
+    public onChange(message: string): void {
+        this.parent?.onChange(message);
     }
 
     public setContent(content: string): void {
-        this.content = content;
-        this.onChange();
+        if (content !== this.content) {
+            this.content = content;
+            this.onChange('setContent');
+        }
     }
 
     public getContent(): string {
@@ -113,7 +115,7 @@ export class Block extends BlockParent {
 }
 
 export class Page extends BlockParent {
-    public readonly changed$ = new Subject<null>();
+    public readonly changed$ = new Subject<string>();
     public readonly id: PageId;
     private title: PageTitle;
     private changeNotificationPending = false;
@@ -130,20 +132,22 @@ export class Page extends BlockParent {
     }
 
     public setTitle(title: string): void {
-        this.title = title;
-        this.onChange();
+        if (title !== this.title) {
+            this.title = title;
+            this.onChange('title');
+        }
     }
 
     public appendBlock(block: Block): void {
         this.children.push(block);
     }
 
-    public onChange(): void {
+    public onChange(change: string): void {
         if (!this.changeNotificationPending) {
             this.changeNotificationPending = true;
             setTimeout(() => {
                 this.changeNotificationPending = false;
-                this.changed$.next(null);
+                this.changed$.next(change);
             }, 0);
         }
     }

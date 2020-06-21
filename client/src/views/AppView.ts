@@ -6,6 +6,7 @@ import { Page, Block, PageId } from '../Page';
 import { BlockRenderer } from '../BlockRenderer';
 import { PageRepository } from '../PageRepository';
 import { Observable, combineLatest, Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 function getBacklinks(block: Block, target: PageId): Block[] {
     const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
@@ -61,13 +62,18 @@ export class AppView {
             this.notificationsView.notify(message, type),
         );
 
-        combineLatest([activePageId$, this.pageRepository.pagesLoaded$]).subscribe(([id]) => {
-            const page = this.pageRepository.getPage(id);
-            if (this.pageChangeSubscription !== undefined) {
-                this.pageChangeSubscription.unsubscribe();
+        combineLatest([activePageId$, this.pageRepository.pagesLoaded$]).subscribe(([id, loaded]) => {
+            if (loaded) {
+                const page = this.pageRepository.getPage(id);
+                if (this.pageChangeSubscription !== undefined) {
+                    this.pageChangeSubscription.unsubscribe();
+                }
+                this.pageChangeSubscription = page.changed$.pipe(debounceTime(100)).subscribe((change) => {
+                    console.log(change);
+                    this.pageRepository.save(page);
+                });
+                this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
             }
-            this.pageChangeSubscription = page.changed$.subscribe(() => this.pageRepository.save(page));
-            this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
         });
     }
 }
