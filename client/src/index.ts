@@ -1,24 +1,30 @@
-import { makeApi } from './Api';
-import { AppView } from './views/App';
-import { State } from './types';
-import * as actions from './actions';
-
+import { Api } from './Api';
+import { AppView } from './views/AppView';
+import { PageParser } from './PageParser';
+import { BlockRenderer } from './BlockRenderer';
 import './index.scss';
-import { Store } from './store';
+import { PageId } from './Page';
 
-const api = makeApi(window.localStorage.getItem('apiUri') ?? '');
+const pageParser = new PageParser();
+const blockRenderer = new BlockRenderer();
+const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser);
+const appView = new AppView(blockRenderer);
+document.getElementById('container')?.appendChild(appView.$element);
 
-const initialState: State = {
-    notifications: [],
-    pages: [],
-    sidebar: {
-        query: '',
-    },
-    activePageId: undefined,
-    editing: undefined,
-};
+function urlToPageId(url: string): PageId {
+    if (url.startsWith('/')) {
+        return url.substring(1);
+    } else if (url.startsWith('./')) {
+        return url.substring(2);
+    } else {
+        return url;
+    }
+}
 
-const store = new Store(initialState);
+api.loadPages().then((pages) => {
+    appView.setPages(pages);
+    appView.setActivePageId(urlToPageId(window.location.pathname));
+});
 
 document.addEventListener('click', (event) => {
     if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
@@ -26,18 +32,14 @@ document.addEventListener('click', (event) => {
         const href = event.target.getAttribute('href');
         if (href) {
             window.history.pushState(null, href, href);
-            store.dispatch(actions.onUrlChange(href));
+            appView.setActivePageId(urlToPageId(href));
         }
     }
 });
-window.addEventListener('popstate', () => {
-    store.dispatch(actions.onUrlChange(window.location.pathname));
-});
 
-const appView = new AppView(store);
-document.getElementById('container')?.appendChild(appView.$element);
-store.dispatch(actions.onUrlChange(window.location.pathname));
-api.loadPages().then((pages) => store.dispatch(actions.onPagesLoaded(pages)));
+window.addEventListener('popstate', () => {
+    appView.setActivePageId(urlToPageId(window.location.pathname));
+});
 
 // PWA
 

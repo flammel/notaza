@@ -1,157 +1,16 @@
-import _ from 'lodash';
-import { Block as BT, Page as PT, PageId } from '../types';
-import { WrappedElement } from '../html';
-import { BlockRenderer } from '../Renderer';
+import { BlockRenderer } from '../BlockRenderer';
+import { Page, Block, PageId } from '../Page';
 
-abstract class BlockParent {
-    public children: Block[] = [];
-    public abstract onChange(): void;
-
-    public prependChild(content: string): Block {
-        const block = new Block({ content, children: [] }, this);
-        this.children.splice(0, 0, block);
-        this.onChange();
-        return block;
-    }
-
-    public appendChild(content: string): Block {
-        const block = new Block({ content, children: [] }, this);
-        this.children.push(block);
-        this.onChange();
-        return block;
-    }
-
-    public insertChild(content: string, after?: Block): Block {
-        const block = new Block({ content, children: [] }, this);
-        if (after === undefined) {
-            this.children.push(block);
-        } else {
-            const refIndex = this.children.indexOf(after);
-            if (refIndex >= 0) {
-                this.children.splice(refIndex + 1, 0, block);
-            } else {
-                this.children.push(block);
-            }
-        }
-        this.onChange();
-        return block;
-    }
-
-    public removeChild(child: Block): void {
-        const index = this.children.indexOf(child);
-        if (index >= 0) {
-            this.children.splice(index, 1);
-        }
-        this.onChange();
-    }
+function resize($textarea: HTMLTextAreaElement): void {
+    $textarea.setAttribute('rows', '1');
+    $textarea.style.height = 'auto';
+    $textarea.style.height = $textarea.scrollHeight + 'px';
 }
 
 interface BlockElements {
     $block: HTMLLIElement;
     $inner: HTMLDivElement;
     $children: HTMLUListElement;
-}
-class Block extends BlockParent {
-    private readonly parent: BlockParent | undefined;
-    private content: string;
-    private elements: BlockElements | undefined;
-
-    constructor(bt: BT, parent: BlockParent | undefined) {
-        super();
-        this.content = bt.content;
-        this.parent = parent;
-        this.children = bt.children.map((child) => new Block(child, this));
-    }
-
-    public onChange(): void {
-        this.parent?.onChange();
-    }
-
-    public setElements(elements: BlockElements): void {
-        this.elements = elements;
-    }
-
-    public getElements(): BlockElements | undefined {
-        return this.elements;
-    }
-
-    public setContent(content: string): void {
-        this.content = content;
-        this.onChange();
-    }
-
-    public getContent(): string {
-        return this.content;
-    }
-
-    public getParent(): BlockParent | undefined {
-        return this.parent;
-    }
-
-    public getPrev(): Block | undefined {
-        const parent = this.parent;
-        if (parent === undefined) {
-            return undefined;
-        }
-        const index = parent.children.indexOf(this);
-        if (index < 1) {
-            return undefined;
-        }
-        return parent.children[index - 1];
-    }
-
-    public getNext(): Block | undefined {
-        if (this.children.length > 0) {
-            return this.children[0];
-        }
-        const parent = this.parent;
-        if (parent === undefined) {
-            return undefined;
-        }
-        const index = parent.children.indexOf(this);
-        if (index < 1) {
-            return undefined;
-        }
-        return parent.children[index - 1];
-    }
-}
-
-export class Page extends BlockParent {
-    public readonly title: string;
-    private updatePending = false;
-
-    constructor(private readonly pt: PT) {
-        super();
-        this.title = pt.title;
-        this.children = pt.children.map((bt) => new Block(bt, this));
-    }
-
-    public onChange(): void {
-        if (!this.updatePending) {
-            this.updatePending = true;
-            setTimeout(() => {
-                this.updatePending = false;
-                console.log(this.toPT());
-            }, 0);
-        }
-    }
-
-    private toPT(): PT {
-        const blockMap = (block: Block): BT => ({
-            content: block.getContent(),
-            children: block.children.map(blockMap),
-        });
-        return {
-            ...this.pt,
-            children: this.children.map(blockMap),
-        };
-    }
-}
-
-function resize($textarea: HTMLTextAreaElement): void {
-    $textarea.setAttribute('rows', '1');
-    $textarea.style.height = 'auto';
-    $textarea.style.height = $textarea.scrollHeight + 'px';
 }
 
 export interface BacklinkPage {
@@ -160,12 +19,13 @@ export interface BacklinkPage {
     backlinks: { content: string }[];
 }
 
-export class PageView implements WrappedElement {
+export class PageView {
     public readonly $element: HTMLElement;
     private readonly $title: HTMLHeadingElement;
     private readonly $blocks: HTMLUListElement;
     private readonly $backlinks: HTMLUListElement;
     private editing: [Block, HTMLTextAreaElement] | undefined;
+    private blockElements = new Map<Block, BlockElements>();
 
     constructor(private readonly renderer: BlockRenderer) {
         this.$element = document.createElement('div');
@@ -241,14 +101,14 @@ export class PageView implements WrappedElement {
         $children.appendChild(this.renderBlocks(block.children));
         $block.appendChild($children);
 
-        block.setElements({ $block, $inner, $children });
+        this.blockElements.set(block, { $block, $inner, $children });
         this.renderBlockContent(block);
 
         return $block;
     }
 
     private renderBlockContent(block: Block): HTMLDivElement {
-        const elements = block.getElements();
+        const elements = this.blockElements.get(block);
         if (elements === undefined) {
             throw new Error('Tried to render content of unrendered block');
         }
@@ -262,7 +122,7 @@ export class PageView implements WrappedElement {
     }
 
     private renderBlockEditor(block: Block): HTMLTextAreaElement {
-        const elements = block.getElements();
+        const elements = this.blockElements.get(block);
         if (elements === undefined) {
             throw new Error('Tried to render editor of unrendered block');
         }
@@ -296,7 +156,7 @@ export class PageView implements WrappedElement {
         if (editing === undefined) {
             return;
         }
-        const elements = editing.getElements();
+        const elements = this.blockElements.get(editing);
         if (elements === undefined) {
             throw new Error('Tried to handle keydown in unrendered block');
         }
@@ -331,8 +191,8 @@ export class PageView implements WrappedElement {
                         parent.removeChild(editing);
                         const newBlock = grandParent.insertChild(editing.getContent(), parent);
                         const $newBlock = this.renderBlock(newBlock);
-                        editing.getElements()?.$block.remove();
-                        parent.getElements()?.$block.insertAdjacentElement('afterend', $newBlock);
+                        elements.$block.remove();
+                        this.blockElements.get(parent)?.$block.insertAdjacentElement('afterend', $newBlock);
                         this.handleBlockClick(newBlock);
                     }
                 }
@@ -340,10 +200,10 @@ export class PageView implements WrappedElement {
                 const prev = editing.getPrev();
                 if (prev) {
                     editing.getParent()?.removeChild(editing);
-                    editing.getElements()?.$block.remove();
+                    elements.$block.remove();
                     const newBlock = prev.appendChild(editing.getContent());
                     const $newBlock = this.renderBlock(newBlock);
-                    prev.getElements()?.$children.appendChild($newBlock);
+                    this.blockElements.get(prev)?.$children.appendChild($newBlock);
                     this.handleBlockClick(newBlock);
                 }
             }
@@ -354,7 +214,7 @@ export class PageView implements WrappedElement {
                 return;
             }
             parent.removeChild(editing);
-            editing.getElements()?.$block.remove();
+            elements.$block.remove();
             this.editing = undefined;
         } else if (event.key === 's' && event.ctrlKey) {
             event.preventDefault();
