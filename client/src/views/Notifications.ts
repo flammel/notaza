@@ -1,18 +1,26 @@
-import { Notification, State } from '../types';
+import { Notification } from '../types';
 import { Store } from '../store';
+import { WrappedElement } from '../html';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
-function selectNotifications(state: State): Notification[] {
-    return state.notifications;
+export class NotificationsController {
+    constructor(private readonly store: Store) {}
+
+    public get notifications$(): Observable<Notification[]> {
+        return this.store.state$.pipe(map((state) => state.notifications));
+    }
 }
 
-export class NotificationsView extends HTMLDivElement {
-    constructor(store: Store) {
-        super();
+export class NotificationsView implements WrappedElement {
+    public readonly $element: HTMLDivElement;
 
-        this.classList.add('notifications');
+    constructor(controller: NotificationsController) {
+        this.$element = document.createElement('div');
+        this.$element.classList.add('notifications');
 
-        store.select(selectNotifications).subscribe((notifications) => {
-            this.innerHTML = '';
+        controller.notifications$.subscribe((notifications) => {
+            this.$element.innerHTML = '';
             for (const notification of notifications) {
                 const $notification = document.createElement('div');
                 $notification.classList.add('notification');
@@ -20,9 +28,8 @@ export class NotificationsView extends HTMLDivElement {
                 $notification.classList.add(
                     notification.type === 'error' ? 'notification--error' : 'notification--success',
                 );
-                this.appendChild($notification);
+                this.$element.appendChild($notification);
             }
         });
     }
 }
-customElements.define('n-notifications', NotificationsView, { extends: 'div' });

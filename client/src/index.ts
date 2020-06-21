@@ -34,7 +34,8 @@ window.addEventListener('popstate', () => {
     store.dispatch(actions.onUrlChange(window.location.pathname));
 });
 
-document.getElementById('container')?.appendChild(new AppView(store));
+const appView = new AppView(store);
+document.getElementById('container')?.appendChild(appView.$element);
 store.dispatch(actions.onUrlChange(window.location.pathname));
 api.loadPages().then((pages) => store.dispatch(actions.onPagesLoaded(pages)));
 

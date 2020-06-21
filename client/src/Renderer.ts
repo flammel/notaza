@@ -85,7 +85,7 @@ const hashtags: MarkdownIt.PluginSimple = (md): void => {
         `<a class="internal" href="./${tokens[index].content}">#${tokens[index].content}</a>`;
 };
 
-export class Renderer {
+export class BlockRenderer {
     private readonly mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags);
     private readonly memoized: (markdown: string) => string;
 

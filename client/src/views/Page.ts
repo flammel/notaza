@@ -1,42 +1,151 @@
-import { Observable, Subject, BehaviorSubject, combineLatest } from 'rxjs';
-import * as _ from 'lodash';
-import { Block, BlockPath, State, BlockContainer, PageId } from '../types';
-import { map, distinctUntilChanged, pluck } from 'rxjs/operators';
-import { Store } from '../store';
-import * as actions from '../actions';
-import { Renderer } from '../Renderer';
+import _ from 'lodash';
+import { Block as BT, Page as PT, PageId } from '../types';
+import { WrappedElement } from '../html';
+import { BlockRenderer } from '../Renderer';
 
-interface BlockForView {
-    rawContent: string;
-    renderedContent: string;
-    editing: boolean;
-    children: BlockForView[];
-    path: BlockPath;
+abstract class BlockParent {
+    public children: Block[] = [];
+    public abstract onChange(): void;
+
+    public prependChild(content: string): Block {
+        const block = new Block({ content, children: [] }, this);
+        this.children.splice(0, 0, block);
+        this.onChange();
+        return block;
+    }
+
+    public appendChild(content: string): Block {
+        const block = new Block({ content, children: [] }, this);
+        this.children.push(block);
+        this.onChange();
+        return block;
+    }
+
+    public insertChild(content: string, after?: Block): Block {
+        const block = new Block({ content, children: [] }, this);
+        if (after === undefined) {
+            this.children.push(block);
+        } else {
+            const refIndex = this.children.indexOf(after);
+            if (refIndex >= 0) {
+                this.children.splice(refIndex + 1, 0, block);
+            } else {
+                this.children.push(block);
+            }
+        }
+        this.onChange();
+        return block;
+    }
+
+    public removeChild(child: Block): void {
+        const index = this.children.indexOf(child);
+        if (index >= 0) {
+            this.children.splice(index, 1);
+        }
+        this.onChange();
+    }
 }
 
-type BlockWithoutChildren = Omit<BlockForView, 'children'>;
+interface BlockElements {
+    $block: HTMLLIElement;
+    $inner: HTMLDivElement;
+    $children: HTMLUListElement;
+}
+class Block extends BlockParent {
+    private readonly parent: BlockParent | undefined;
+    private content: string;
+    private elements: BlockElements | undefined;
 
-function forView(
-    block: Block,
-    path: BlockPath,
-    editing: BlockPath | undefined,
-    render: (markdown: string) => string,
-): BlockForView {
-    return {
-        rawContent: block.content,
-        renderedContent: render(block.content),
-        editing: _.isEqual(path, editing),
-        path,
-        children: block.children.map((child, index) => forView(child, [...path, index], editing, render)),
-    };
+    constructor(bt: BT, parent: BlockParent | undefined) {
+        super();
+        this.content = bt.content;
+        this.parent = parent;
+        this.children = bt.children.map((child) => new Block(child, this));
+    }
+
+    public onChange(): void {
+        this.parent?.onChange();
+    }
+
+    public setElements(elements: BlockElements): void {
+        this.elements = elements;
+    }
+
+    public getElements(): BlockElements | undefined {
+        return this.elements;
+    }
+
+    public setContent(content: string): void {
+        this.content = content;
+        this.onChange();
+    }
+
+    public getContent(): string {
+        return this.content;
+    }
+
+    public getParent(): BlockParent | undefined {
+        return this.parent;
+    }
+
+    public getPrev(): Block | undefined {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return undefined;
+        }
+        const index = parent.children.indexOf(this);
+        if (index < 1) {
+            return undefined;
+        }
+        return parent.children[index - 1];
+    }
+
+    public getNext(): Block | undefined {
+        if (this.children.length > 0) {
+            return this.children[0];
+        }
+        const parent = this.parent;
+        if (parent === undefined) {
+            return undefined;
+        }
+        const index = parent.children.indexOf(this);
+        if (index < 1) {
+            return undefined;
+        }
+        return parent.children[index - 1];
+    }
 }
 
-function blocksForView(
-    blocks: Block[],
-    editing: BlockPath | undefined,
-    render: (markdown: string) => string,
-): BlockForView[] {
-    return blocks.map((block, index) => forView(block, [index], editing, render));
+export class Page extends BlockParent {
+    public readonly title: string;
+    private updatePending = false;
+
+    constructor(private readonly pt: PT) {
+        super();
+        this.title = pt.title;
+        this.children = pt.children.map((bt) => new Block(bt, this));
+    }
+
+    public onChange(): void {
+        if (!this.updatePending) {
+            this.updatePending = true;
+            setTimeout(() => {
+                this.updatePending = false;
+                console.log(this.toPT());
+            }, 0);
+        }
+    }
+
+    private toPT(): PT {
+        const blockMap = (block: Block): BT => ({
+            content: block.getContent(),
+            children: block.children.map(blockMap),
+        });
+        return {
+            ...this.pt,
+            children: this.children.map(blockMap),
+        };
+    }
 }
 
 function resize($textarea: HTMLTextAreaElement): void {
@@ -45,258 +154,228 @@ function resize($textarea: HTMLTextAreaElement): void {
     $textarea.style.height = $textarea.scrollHeight + 'px';
 }
 
-function handleEditorKeyDown(
-    event: KeyboardEvent,
-    $textarea: HTMLTextAreaElement,
-    store: Store,
-    block: BlockForView,
-): void {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
-        const contentAfter = $textarea.value.substring($textarea.selectionEnd);
-        store.dispatch(actions.splitBlock(block.path, contentBefore, contentAfter));
-    } else if (event.key === 'Tab') {
-        event.preventDefault();
-        if (event.shiftKey) {
-            store.dispatch(actions.decreaseLevel(block.path, $textarea.value));
-        } else {
-            store.dispatch(actions.increaseLevel(block.path, $textarea.value));
-        }
-    } else if (event.key === 'Delete' && $textarea.value.length === 0) {
-        event.preventDefault();
-        store.dispatch(actions.deleteBlock(block.path));
-    } else if (event.key === 'Backspace' && $textarea.value.length === 0) {
-        event.preventDefault();
-        store.dispatch(actions.deleteBlock(block.path));
-    } else if (event.key === 'ArrowUp' && event.shiftKey) {
-        event.preventDefault();
-        store.dispatch(actions.startEditingPrevious(block.path, $textarea.value));
-    } else if (event.key === 'ArrowDown' && event.shiftKey) {
-        event.preventDefault();
-        store.dispatch(actions.startEditingNext(block.path, $textarea.value));
-    } else if (event.key === 's' && event.ctrlKey) {
-        event.preventDefault();
-        store.dispatch(actions.stopEditing(block.path, $textarea.value));
-    } else if (event.key === 'Escape') {
-        event.preventDefault();
-        store.dispatch(actions.stopEditing(block.path, $textarea.value));
-    }
+export interface BacklinkPage {
+    id: PageId;
+    title: string;
+    backlinks: { content: string }[];
 }
 
-class BlockContentView extends HTMLDivElement {
-    private path: BlockPath | undefined;
-    private $textarea: HTMLTextAreaElement | undefined;
+export class PageView implements WrappedElement {
+    public readonly $element: HTMLElement;
+    private readonly $title: HTMLHeadingElement;
+    private readonly $blocks: HTMLUListElement;
+    private readonly $backlinks: HTMLUListElement;
+    private editing: [Block, HTMLTextAreaElement] | undefined;
 
-    constructor(store: Store, block$: Observable<BlockWithoutChildren>) {
-        super();
-        this.classList.add('block__content');
-        this.addEventListener('click', (event) => {
-            if (this.path !== undefined) {
-                if (event.target instanceof HTMLInputElement && event.target.type === 'checkbox') {
-                    store.dispatch(actions.onCheckboxClick(this.path));
-                } else {
-                    store.dispatch(actions.onBlockClick(this.path));
-                }
+    constructor(private readonly renderer: BlockRenderer) {
+        this.$element = document.createElement('div');
+        this.$element.classList.add('page');
+
+        this.$title = document.createElement('h1');
+        this.$element.appendChild(this.$title);
+
+        this.$blocks = document.createElement('ul');
+        this.$blocks.classList.add('blocks');
+        this.$element.appendChild(this.$blocks);
+
+        const $backlinksHeadline = document.createElement('h2');
+        $backlinksHeadline.innerText = 'Backlinks';
+        this.$element.appendChild($backlinksHeadline);
+
+        this.$backlinks = document.createElement('ul');
+        this.$blocks.classList.add('backlinks');
+        this.$element.appendChild(this.$backlinks);
+    }
+
+    public setPage(page: Page, backlinkPages: BacklinkPage[]): void {
+        this.$title.innerHTML = page.title;
+        const $children = this.renderBlocks(page.children);
+        this.$blocks.innerHTML = '';
+        this.$blocks.appendChild($children);
+        const $backlinks = this.renderBacklinks(backlinkPages);
+        this.$backlinks.innerHTML = '';
+        this.$backlinks.appendChild($backlinks);
+    }
+
+    private renderBacklinks(backlinkPages: BacklinkPage[]): DocumentFragment {
+        const $backlinks = document.createDocumentFragment();
+        for (const backlinkPage of backlinkPages) {
+            const $pageLink = document.createElement('a');
+            $pageLink.classList.add('internal');
+            $pageLink.setAttribute('href', './' + backlinkPage.id);
+            $pageLink.innerText = backlinkPage.title;
+
+            const $pageBacklinks = document.createElement('ul');
+            for (const backlinkBlock of backlinkPage.backlinks) {
+                const $backlink = document.createElement('li');
+                $backlink.innerHTML = this.renderer.render(backlinkBlock.content);
+                $pageBacklinks.appendChild($backlink);
             }
-        });
-        block$.pipe(distinctUntilChanged(_.isEqual)).subscribe((block) => {
-            this.path = block.path;
-            if (block.editing) {
-                if (!this.$textarea) {
-                    const $textarea = document.createElement('textarea');
-                    $textarea.classList.add('editor');
-                    $textarea.innerHTML = block.rawContent;
-                    $textarea.addEventListener('input', () => {
-                        store.dispatch(actions.onEditorInput(block.path, $textarea.value));
-                        resize($textarea);
-                    });
-                    $textarea.addEventListener('keydown', (event) =>
-                        handleEditorKeyDown(event, $textarea, store, block),
-                    );
-                    this.innerHTML = '';
-                    this.appendChild($textarea);
-                    $textarea.focus();
-                    $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
-                    resize($textarea);
-                    this.$textarea = $textarea;
+
+            const $li = document.createElement('li');
+            $li.appendChild($pageLink);
+            $li.appendChild($pageBacklinks);
+            $backlinks.appendChild($li);
+        }
+        return $backlinks;
+    }
+
+    private renderBlocks(blocks: Block[]): DocumentFragment {
+        const $blocks = document.createDocumentFragment();
+        for (const block of blocks) {
+            $blocks.appendChild(this.renderBlock(block));
+        }
+        return $blocks;
+    }
+
+    private renderBlock(block: Block): HTMLLIElement {
+        const $block = document.createElement('li');
+        $block.classList.add('block');
+
+        const $inner = document.createElement('div');
+        $inner.classList.add('block__inner');
+        $block.appendChild($inner);
+
+        const $children = document.createElement('ul');
+        $children.classList.add('block__children', 'blocks');
+        $children.appendChild(this.renderBlocks(block.children));
+        $block.appendChild($children);
+
+        block.setElements({ $block, $inner, $children });
+        this.renderBlockContent(block);
+
+        return $block;
+    }
+
+    private renderBlockContent(block: Block): HTMLDivElement {
+        const elements = block.getElements();
+        if (elements === undefined) {
+            throw new Error('Tried to render content of unrendered block');
+        }
+        const $content = document.createElement('div');
+        $content.classList.add('block__content');
+        $content.innerHTML = this.renderer.render(block.getContent());
+        $content.addEventListener('click', () => this.handleBlockClick(block));
+        elements.$inner.innerHTML = '';
+        elements.$inner.appendChild($content);
+        return $content;
+    }
+
+    private renderBlockEditor(block: Block): HTMLTextAreaElement {
+        const elements = block.getElements();
+        if (elements === undefined) {
+            throw new Error('Tried to render editor of unrendered block');
+        }
+        const $editor = document.createElement('textarea');
+        $editor.classList.add('block__editor', 'editor');
+        $editor.value = block.getContent();
+        $editor.addEventListener('input', () => this.handleEditorInput($editor));
+        $editor.addEventListener('keydown', (event) => this.handleEditorKeyDown(event, $editor));
+        elements.$inner.innerHTML = '';
+        elements.$inner.appendChild($editor);
+        resize($editor);
+        $editor.focus();
+        $editor.setSelectionRange($editor.value.length, $editor.value.length);
+        return $editor;
+    }
+
+    public handleBlockClick(block: Block): void {
+        if (this.editing !== undefined) {
+            this.editing[0].setContent(this.editing[1].value);
+            this.renderBlockContent(this.editing[0]);
+        }
+        this.editing = [block, this.renderBlockEditor(block)];
+    }
+
+    public handleEditorInput($textarea: HTMLTextAreaElement): void {
+        resize($textarea);
+    }
+
+    public handleEditorKeyDown(event: KeyboardEvent, $textarea: HTMLTextAreaElement): void {
+        const editing = this.editing ? this.editing[0] : undefined;
+        if (editing === undefined) {
+            return;
+        }
+        const elements = editing.getElements();
+        if (elements === undefined) {
+            throw new Error('Tried to handle keydown in unrendered block');
+        }
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
+            const contentAfter = $textarea.value.substring($textarea.selectionEnd);
+            editing.setContent(contentBefore);
+            this.renderBlockContent(editing);
+            if (editing.children.length === 0) {
+                const parent = editing.getParent();
+                if (parent === undefined) {
+                    return;
+                }
+                const newBlock = parent.insertChild(contentAfter, editing);
+                const $newBlock = this.renderBlock(newBlock);
+                elements.$block.insertAdjacentElement('afterend', $newBlock);
+                this.handleBlockClick(newBlock);
+            } else {
+                const newBlock = editing.prependChild(contentAfter);
+                const $newBlock = this.renderBlock(newBlock);
+                elements.$children.insertAdjacentElement('afterbegin', $newBlock);
+                this.handleBlockClick(newBlock);
+            }
+        } else if (event.key === 'Tab') {
+            event.preventDefault();
+            if (event.shiftKey) {
+                const parent = editing.getParent();
+                if (parent instanceof Block) {
+                    const grandParent = parent.getParent();
+                    if (grandParent) {
+                        parent.removeChild(editing);
+                        const newBlock = grandParent.insertChild(editing.getContent(), parent);
+                        const $newBlock = this.renderBlock(newBlock);
+                        editing.getElements()?.$block.remove();
+                        parent.getElements()?.$block.insertAdjacentElement('afterend', $newBlock);
+                        this.handleBlockClick(newBlock);
+                    }
                 }
             } else {
-                this.innerHTML = block.renderedContent;
-                this.$textarea = undefined;
-            }
-        });
-    }
-
-    public connectedCallback(): void {
-        if (this.$textarea) {
-            resize(this.$textarea);
-            this.$textarea.focus();
-            this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);
-        }
-    }
-}
-customElements.define('n-block-content', BlockContentView, { extends: 'div' });
-
-class BlockView extends HTMLLIElement {
-    constructor(store: Store, block$: Observable<BlockForView>) {
-        super();
-        this.classList.add('block');
-        const onlyChildren$ = block$.pipe(pluck('children'), distinctUntilChanged(_.isEqual));
-        const withoutChildren$ = block$.pipe(
-            map((block) => _.omit(block, 'children')),
-            distinctUntilChanged(_.isEqual),
-        );
-        withoutChildren$.subscribe(({ editing }) =>
-            editing ? this.classList.add('block--editing') : this.classList.remove('block--editing'),
-        );
-        this.appendChild(new BlockContentView(store, withoutChildren$));
-        this.appendChild(new BlockList(store, onlyChildren$));
-    }
-}
-customElements.define('n-block', BlockView, { extends: 'li' });
-
-class BlockList extends HTMLUListElement {
-    constructor(store: Store, blocks$: Observable<BlockForView[]>) {
-        super();
-
-        const observables: Subject<BlockForView>[] = [];
-        blocks$.subscribe((blocks) => {
-            for (const [block, observable] of _.zip(blocks, observables)) {
-                if (block) {
-                    if (observable) {
-                        observable.next(block);
-                    } else {
-                        const newObservable = new BehaviorSubject<BlockForView>(block);
-                        observables.push(newObservable);
-                        const newView = new BlockView(store, newObservable);
-                        this.appendChild(newView);
-                        newObservable.subscribe({ complete: () => this.removeChild(newView) });
-                    }
-                } else {
-                    if (observable) {
-                        observable.complete();
-                        observables.pop();
-                    }
+                const prev = editing.getPrev();
+                if (prev) {
+                    editing.getParent()?.removeChild(editing);
+                    editing.getElements()?.$block.remove();
+                    const newBlock = prev.appendChild(editing.getContent());
+                    const $newBlock = this.renderBlock(newBlock);
+                    prev.getElements()?.$children.appendChild($newBlock);
+                    this.handleBlockClick(newBlock);
                 }
             }
-        });
-    }
-}
-customElements.define('n-block-list', BlockList, { extends: 'ul' });
-
-type BacklinkBlock = Block;
-
-function getBacklinks(block: Block, target: PageId): BacklinkBlock[] {
-    const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
-    if (block.content.includes('](./' + target + '.md)') || block.content.includes('#' + target)) {
-        result.push(block);
-    }
-    return result;
-}
-
-interface BacklinkPage {
-    title: string;
-    id: string;
-    backlinks: BacklinkBlock[];
-}
-
-function selectBacklinks(state: State): BacklinkPage[] {
-    const target = state.activePageId;
-    if (target === undefined) {
-        return [];
-    }
-    const pagesWithLinks = [];
-    for (const page of state.pages) {
-        if (page.id !== target) {
-            const backlinks = [];
-            for (const block of page.children) {
-                backlinks.push(...getBacklinks(block, target));
+        } else if (event.key === 'Backspace' && $textarea.value.length === 0) {
+            event.preventDefault();
+            const parent = editing.getParent();
+            if (parent === undefined) {
+                return;
             }
-            if (backlinks.length > 0) {
-                pagesWithLinks.push({
-                    title: page.title,
-                    id: page.id,
-                    backlinks,
-                });
+            parent.removeChild(editing);
+            editing.getElements()?.$block.remove();
+            this.editing = undefined;
+        } else if (event.key === 's' && event.ctrlKey) {
+            event.preventDefault();
+            editing.setContent($textarea.value);
+            this.renderBlockContent(editing);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            editing.setContent($textarea.value);
+            this.renderBlockContent(editing);
+        } else if (event.key === 'ArrowUp' && event.ctrlKey) {
+            event.preventDefault();
+            const prev = editing.getPrev();
+            if (prev !== undefined) {
+                this.handleBlockClick(prev);
+            }
+        } else if (event.key === 'ArrowDown' && event.ctrlKey) {
+            event.preventDefault();
+            const next = editing.getNext();
+            if (next !== undefined) {
+                this.handleBlockClick(next);
             }
         }
     }
-    return pagesWithLinks;
 }
-
-class BacklinksView extends HTMLDivElement {
-    constructor(store: Store, block$: Observable<BacklinkPage[]>) {
-        super();
-        this.classList.add('backlinks');
-
-        const $headline = document.createElement('h2');
-        $headline.innerText = 'Backlinks';
-        this.appendChild($headline);
-
-        const $list = document.createElement('ul');
-        this.appendChild($list);
-
-        block$.subscribe((pwbs) => {
-            $list.innerHTML = pwbs
-                .map(
-                    (pwb) => `
-                    <li>
-                        <a href="./${pwb.id}" class="internal">${pwb.title}</a>
-                        <ul>
-                            ${pwb.backlinks
-                                .map(
-                                    (block) => `
-                                <li>${block.content}</li>
-                            `,
-                                )
-                                .join('')}
-                        </ul>
-                    </li>`,
-                )
-                .join('');
-        });
-    }
-}
-customElements.define('n-backlinks', BacklinksView, { extends: 'div' });
-
-export class PageView extends HTMLDivElement {
-    constructor(store: Store) {
-        super();
-
-        const render = (md: string): string => store.renderer.render(md);
-        const page$ = store.select((state) => state.pages.find((page) => page.id === state.activePageId));
-        const title$ = page$.pipe(
-            map((page) => (page === undefined ? '' : page.title)),
-            distinctUntilChanged(),
-        );
-        const blocks$ = page$.pipe(
-            map((page) => (page === undefined ? [] : page.children)),
-            distinctUntilChanged(_.isEqual),
-        );
-        const editing$ = store.select((state) => state.editing?.blockPath).pipe(distinctUntilChanged());
-        const blocksForView$ = combineLatest(blocks$, editing$).pipe(
-            map(([blocks, editing]) => blocksForView(blocks, editing, render)),
-        );
-        const backlinks$ = store.select(selectBacklinks).pipe(
-            map((pwbs) =>
-                pwbs.map((pwb) => ({
-                    ...pwb,
-                    backlinks: pwb.backlinks.map((block) => ({ ...block, content: render(block.content) })),
-                })),
-            ),
-        );
-
-        this.classList.add('page');
-
-        const $title = document.createElement('h1');
-        title$.subscribe((title) => {
-            $title.innerText = title || '';
-        });
-
-        this.appendChild($title);
-        this.appendChild(new BlockList(store, blocksForView$));
-        this.appendChild(new BacklinksView(store, backlinks$));
-    }
-}
-customElements.define('n-page', PageView, { extends: 'div' });

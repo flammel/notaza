@@ -1,6 +1,8 @@
-import { State } from '../types';
 import * as actions from '../actions';
 import { Store } from '../store';
+import { WrappedElement } from '../html';
+import { Observable, combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 interface SearchResult {
     url: string;
@@ -8,57 +10,54 @@ interface SearchResult {
     matches: string[];
 }
 
-function selectResults(state: State): SearchResult[] {
-    return [...state.pages.values()]
-        .filter((page) => page.title.toLowerCase().includes(state.sidebar.query.toLowerCase()))
-        .map((page) => ({
-            title: page.title,
-            url: page.id,
-            matches: [],
-        }));
-}
+export class SidebarController {
+    constructor(private readonly store: Store) {}
 
-class SearchResultView extends HTMLLIElement {
-    constructor(result: SearchResult) {
-        super();
+    public onQueryChange(query: string): void {
+        this.store.dispatch(actions.onQueryChange(query));
+    }
 
-        const $link = document.createElement('a');
-        $link.setAttribute('href', result.url);
-        $link.classList.add('internal');
-        $link.innerText = result.title;
+    public get results$(): Observable<SearchResult[]> {
+        const pages$ = this.store.state$.pipe(map((state) => state.pages));
+        const query$ = this.store.state$.pipe(map((state) => state.sidebar.query));
+        return combineLatest(pages$, query$, (pages, query) =>
+            pages
+                .filter((page) => page.title.toLowerCase().includes(query.toLowerCase()))
+                .map((page) => ({
+                    title: page.title,
+                    url: page.id,
+                    matches: [],
+                }))
+                .sort(this.compareResults),
+        );
+    }
 
-        const $matches = document.createElement('ul');
-        for (const match of result.matches || []) {
-            const $match = document.createElement('li');
-            $match.classList.add('search-result__match');
-            $match.innerHTML = match;
-            // const idx = match.toLowerCase().indexOf(result.query.toLowerCase());
-            // $match.appendChild(document.createTextNode(match.substring(0, idx)));
-            // const $mark = document.createElement('mark');
-            // $mark.innerText = match.substring(idx, idx + result.query.length);
-            // $match.appendChild($mark);
-            // $match.appendChild(document.createTextNode(match.substring(idx + result.query.length)));
-            $matches.appendChild($match);
+    private compareResults(a: SearchResult, b: SearchResult): number {
+        const aIsDate = a.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
+        const bIsDate = b.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
+        if (aIsDate && bIsDate) {
+            return b.title.localeCompare(a.title);
+        } else if (aIsDate && !bIsDate) {
+            return -1;
+        } else if (!aIsDate && bIsDate) {
+            return 1;
+        } else {
+            return a.title.localeCompare(b.title);
         }
-
-        this.classList.add('search-result');
-        this.appendChild($link);
-        this.appendChild($matches);
     }
 }
-customElements.define('n-search-result', SearchResultView, { extends: 'li' });
 
-export class SidebarView extends HTMLDivElement {
-    constructor(store: Store) {
-        super();
+export class SidebarView implements WrappedElement {
+    public readonly $element: HTMLDivElement;
 
+    constructor(controller: SidebarController) {
         const $pageList = document.createElement('ul');
         $pageList.classList.add('sidebar__list');
 
         const $input = document.createElement('input');
         $input.setAttribute('placeholder', 'Search');
         $input.addEventListener('input', () => {
-            store.dispatch(actions.onQueryChange($input.value));
+            controller.onQueryChange($input.value);
         });
 
         const $today = document.createElement('a');
@@ -74,142 +73,40 @@ export class SidebarView extends HTMLDivElement {
         $form.appendChild($today);
         $form.appendChild($input);
 
-        this.classList.add('sidebar');
-        this.appendChild($form);
-        this.appendChild($pageList);
+        this.$element = document.createElement('div');
+        this.$element.classList.add('sidebar');
+        this.$element.appendChild($form);
+        this.$element.appendChild($pageList);
 
-        store.select(selectResults).subscribe((results) => {
+        controller.results$.subscribe((results) => {
             const $fragment = document.createDocumentFragment();
             for (const result of results) {
-                $fragment.appendChild(new SearchResultView(result));
+                $fragment.appendChild(this.renderResult(result));
             }
             $pageList.innerHTML = '';
             $pageList.appendChild($fragment);
         });
     }
+
+    private renderResult(result: SearchResult): HTMLElement {
+        const $link = document.createElement('a');
+        $link.setAttribute('href', result.url);
+        $link.classList.add('internal');
+        $link.innerText = result.title;
+
+        const $matches = document.createElement('ul');
+        for (const match of result.matches || []) {
+            const $match = document.createElement('li');
+            $match.classList.add('search-result__match');
+            $match.innerHTML = match;
+            $matches.appendChild($match);
+        }
+
+        const $result = document.createElement('li');
+        $result.classList.add('search-result');
+        $result.appendChild($link);
+        $result.appendChild($matches);
+
+        return $result;
+    }
 }
-customElements.define('n-sidebar', SidebarView, { extends: 'div' });
-
-// interface SidebarViewState {
-//     query: string;
-//     results: SearchResult[];
-// }
-
-// interface SidebarView {
-//     element: HTMLElement;
-// }
-
-// function selectSidebarState(state: AppState): SidebarViewState {
-//     return {
-//         query: state.sidebar.query,
-//         results: state.pages
-//             .filter((page) => page.title.toLowerCase().includes(state.sidebar.query.toLowerCase()))
-//             .map((page) => ({
-//                 title: page.title,
-//                 url: page.id,
-//                 matches: [],
-//             })),
-//     };
-// }
-
-// export function makeSidebarView(store: AppStore): SidebarView {
-//     // Elements
-
-//     const $pageList = document.createElement('ul');
-//     $pageList.classList.add('sidebar__list');
-
-//     const $input = document.createElement('input');
-//     $input.setAttribute('placeholder', 'Search');
-
-//     const $today = document.createElement('a');
-//     $today.setAttribute('href', '/');
-//     $today.classList.add('internal');
-//     $today.innerText = 'Today';
-
-//     const $form = document.createElement('form');
-//     $form.classList.add('sidebar__header');
-//     $form.addEventListener('submit', (event) => {
-//         event.preventDefault();
-//     });
-//     $form.appendChild($today);
-//     $form.appendChild($input);
-
-//     const $sidebar = document.createElement('div');
-//     $sidebar.classList.add('sidebar');
-//     $sidebar.appendChild($form);
-//     $sidebar.appendChild($pageList);
-
-//     $input.addEventListener('input', () => {
-//         store.dispatch(actions.updateQuery({ query: $input.value }));
-//     });
-
-//     store.select(selectSidebarState).subscribe((state) => {
-//         console.log('new sidebar state', state);
-//         const $fragment = document.createDocumentFragment();
-//         for (const result of state.results) {
-//             $fragment.appendChild(makeResult(result));
-//         }
-//         $pageList.innerHTML = '';
-//         $pageList.appendChild($fragment);
-//     });
-
-//     return {
-//         element: $sidebar,
-//     };
-// }
-
-// function makeResult(result: SearchResult): HTMLLIElement {
-//     const $link = document.createElement('a');
-//     $link.setAttribute('href', result.url);
-//     $link.classList.add('internal');
-//     $link.innerText = result.title;
-
-//     const $matches = document.createElement('ul');
-//     for (const match of result.matches || []) {
-//         const $match = document.createElement('li');
-//         $match.classList.add('search-result__match');
-//         $match.innerHTML = match;
-//         // const idx = match.toLowerCase().indexOf(result.query.toLowerCase());
-//         // $match.appendChild(document.createTextNode(match.substring(0, idx)));
-//         // const $mark = document.createElement('mark');
-//         // $mark.innerText = match.substring(idx, idx + result.query.length);
-//         // $match.appendChild($mark);
-//         // $match.appendChild(document.createTextNode(match.substring(idx + result.query.length)));
-//         $matches.appendChild($match);
-//     }
-
-//     const $item = document.createElement('li');
-//     $item.classList.add('search-result');
-//     $item.appendChild($link);
-//     $item.appendChild($matches);
-
-//     return $item;
-// }
-
-// // function resultSort(a: SearchResult, b: SearchResult): number {
-// //     const aIsDate = a.page.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
-// //     const bIsDate = b.page.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
-// //     if (aIsDate && bIsDate) {
-// //         return b.page.title.localeCompare(a.page.title);
-// //     } else if (aIsDate && !bIsDate) {
-// //         return -1;
-// //     } else if (!aIsDate && bIsDate) {
-// //         return 1;
-// //     } else {
-// //         return a.page.title.localeCompare(b.page.title);
-// //     }
-// // }
-
-// // function matchPage(page: Page, query: string): SearchResult {
-// //     const matches = [page.title];
-// //     return {
-// //         page,
-// //         query,
-// //         matches:
-// //             query === ''
-// //                 ? []
-// //                 : matches.length > 0 || page.title.toLowerCase().includes(query.toLowerCase())
-// //                 ? matches
-// //                 : undefined,
-// //     };
-// // }

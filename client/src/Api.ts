@@ -1,4 +1,5 @@
 import { Pages, Page, Block } from './types';
+import * as _ from 'lodash';
 
 interface ApiPage {
     id: string;
@@ -79,15 +80,16 @@ function readPage({ id, markdown }: ApiPage): Page {
     try {
         blocks = parseBlocks(beforeBacklinks);
     } catch (e) {
-        console.error(e);
+        console.error({
+            id,
+            error: e,
+            markdown: markdown,
+        });
         blocks = [{ content: 'parse error: ' + (e instanceof Error ? e.message : ''), children: [] }];
     }
     if (blocks.length === 0) {
         blocks = [{ content: '', children: [] }];
     }
-    blocks.push({ content: 'foo #bar lorem', children: [] });
-    blocks.push({ content: '[] foo #bar lorem', children: [] });
-    blocks.push({ content: '[x] foo #bar lorem', children: [] });
     return {
         id,
         title: getTitle(markdown) || id,
@@ -97,13 +99,13 @@ function readPage({ id, markdown }: ApiPage): Page {
 }
 
 function parseBlocks(markdown: string): Block[] {
-    const lines = markdown.split('\n');
-    while (lines[0] !== undefined && lines[0].trim() === '') {
-        lines.shift();
-    }
-    while (lines[lines.length - 1] !== undefined && lines[lines.length - 1].trim() === '') {
-        lines.pop();
-    }
+    const lines = _.dropRightWhile(
+        _.takeWhile(
+            _.dropWhile(markdown.split('\n'), (line) => line.trim() === '' || line.startsWith('#') || line === '*'),
+            (line) => line !== '<!-- notaza backlinks start -->',
+        ),
+        (line) => line.trim() === '',
+    );
 
     const groups: [number, string[]][] = [];
     for (const line of lines) {
