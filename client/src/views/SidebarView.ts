@@ -1,4 +1,3 @@
-import { Page } from '../Page';
 import { PageRepository } from '../PageRepository';
 
 interface SearchResult {
@@ -41,7 +40,7 @@ export class SidebarView {
         this.$element.appendChild($form);
         this.$element.appendChild(this.$pageList);
 
-        pageRepository.addPagesListener(() => this.updateResults());
+        pageRepository.pagesLoaded$.subscribe(() => this.updateResults());
     }
 
     private updateResults(): void {

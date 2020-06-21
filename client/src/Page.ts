@@ -1,3 +1,5 @@
+import { Subject } from 'rxjs';
+
 export interface RawPage {
     id: PageId;
     title: PageTitle;
@@ -111,10 +113,10 @@ export class Block extends BlockParent {
 }
 
 export class Page extends BlockParent {
+    public readonly changed$ = new Subject<null>();
     public readonly id: PageId;
     private title: PageTitle;
-    private updatePending = false;
-    private changeListeners: (() => unknown)[] = [];
+    private changeNotificationPending = false;
 
     constructor(rawPage: RawPage) {
         super();
@@ -137,18 +139,12 @@ export class Page extends BlockParent {
     }
 
     public onChange(): void {
-        if (!this.updatePending) {
-            this.updatePending = true;
+        if (!this.changeNotificationPending) {
+            this.changeNotificationPending = true;
             setTimeout(() => {
-                this.updatePending = false;
-                for (const listener of this.changeListeners) {
-                    listener();
-                }
+                this.changeNotificationPending = false;
+                this.changed$.next(null);
             }, 0);
         }
-    }
-
-    public addChangeListener(listener: () => unknown): void {
-        this.changeListeners.push(listener);
     }
 }

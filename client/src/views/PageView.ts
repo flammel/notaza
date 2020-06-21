@@ -26,6 +26,7 @@ export class PageView {
     private readonly $backlinks: HTMLUListElement;
     private editing: [Block, HTMLTextAreaElement] | undefined;
     private blockElements = new Map<Block, BlockElements>();
+    private page: Page | undefined;
 
     constructor(private readonly renderer: BlockRenderer) {
         this.$element = document.createElement('div');
@@ -33,6 +34,21 @@ export class PageView {
 
         this.$title = document.createElement('h1');
         this.$element.appendChild(this.$title);
+        this.$title.addEventListener('click', () => {
+            if (this.$title.getElementsByTagName('input').length > 0) {
+                return;
+            }
+            const $editor = document.createElement('input');
+            $editor.value = this.$title.innerText;
+            $editor.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    this.page?.setTitle($editor.value);
+                    this.$title.innerText = $editor.value;
+                }
+            });
+            this.$title.innerHTML = '';
+            this.$title.appendChild($editor);
+        });
 
         this.$blocks = document.createElement('ul');
         this.$blocks.classList.add('blocks');
@@ -48,6 +64,7 @@ export class PageView {
     }
 
     public setPage(page: Page, backlinkPages: BacklinkPage[]): void {
+        this.page = page;
         this.$title.innerHTML = page.getTitle();
         const $children = this.renderBlocks(page.children);
         this.$blocks.innerHTML = '';

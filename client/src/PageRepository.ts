@@ -1,11 +1,13 @@
 import { Page, PageId } from './Page';
 import { dateToString } from './util';
 import { Api } from './Api';
+import { Subject } from 'rxjs';
 
 export class PageRepository {
+    public readonly pagesLoaded$ = new Subject<null>();
+    public readonly notifications$ = new Subject<{ message: string; type: 'error' | 'success' }>();
     private readonly api: Api;
     private pages: Map<PageId, Page> | undefined;
-    private readonly listeners: (() => unknown)[] = [];
 
     constructor(api: Api) {
         this.api = api;
@@ -13,9 +15,7 @@ export class PageRepository {
 
     public setPages(pages: Page[]): void {
         this.pages = new Map(pages.map((page) => [page.id, page]));
-        for (const listener of this.listeners) {
-            listener();
-        }
+        this.pagesLoaded$.next(null);
     }
 
     public getAllPages(): Page[] {
@@ -38,11 +38,10 @@ export class PageRepository {
         }
     }
 
-    public addPagesListener(listener: () => unknown): void {
-        this.listeners.push(listener);
-    }
-
     public save(page: Page): void {
-        this.api.savePage(page);
+        this.api
+            .savePage(page)
+            .then(() => this.notifications$.next({ message: 'page saved', type: 'success' }))
+            .catch(() => this.notifications$.next({ message: 'save failed', type: 'error' }));
     }
 }

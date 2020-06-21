@@ -5,6 +5,7 @@ import { PageView, BacklinkPage } from './PageView';
 import { Page, Block, PageId } from '../Page';
 import { BlockRenderer } from '../BlockRenderer';
 import { PageRepository } from '../PageRepository';
+import { Observable, combineLatest, Subscription } from 'rxjs';
 
 function getBacklinks(block: Block, target: PageId): Block[] {
     const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
@@ -44,8 +45,9 @@ export class AppView {
     private readonly pageView: PageView;
     private readonly notificationsView: NotificationsView;
     private readonly pageRepository: PageRepository;
+    private pageChangeSubscription: Subscription | undefined;
 
-    constructor(renderer: BlockRenderer, pageRepository: PageRepository) {
+    constructor(renderer: BlockRenderer, pageRepository: PageRepository, activePageId$: Observable<PageId>) {
         this.sidebarView = new SidebarView(pageRepository);
         this.notificationsView = new NotificationsView();
         this.pageView = new PageView(renderer);
@@ -55,11 +57,17 @@ export class AppView {
         this.$element.appendChild(this.sidebarView.$element);
         this.$element.appendChild(this.notificationsView.$element);
         this.$element.appendChild(this.pageView.$element);
-    }
+        this.pageRepository.notifications$.subscribe(({ message, type }) =>
+            this.notificationsView.notify(message, type),
+        );
 
-    public setActivePageId(id: PageId): void {
-        const page = this.pageRepository.getPage(id);
-        page.addChangeListener(() => this.pageRepository.save(page));
-        this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
+        combineLatest([activePageId$, this.pageRepository.pagesLoaded$]).subscribe(([id]) => {
+            const page = this.pageRepository.getPage(id);
+            if (this.pageChangeSubscription !== undefined) {
+                this.pageChangeSubscription.unsubscribe();
+            }
+            this.pageChangeSubscription = page.changed$.subscribe(() => this.pageRepository.save(page));
+            this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
+        });
     }
 }
