@@ -112,6 +112,10 @@ export class Block extends BlockParent {
         }
         return parent.children[index - 1];
     }
+
+    public flatten(): Block[] {
+        return [this, ...this.children.flatMap((child) => child.flatten())];
+    }
 }
 
 export class Page extends BlockParent {
@@ -150,5 +154,9 @@ export class Page extends BlockParent {
                 this.changed$.next(change);
             }, 0);
         }
+    }
+
+    public getFlatBlocks(): Block[] {
+        return this.children.flatMap((block) => block.flatten());
     }
 }

@@ -69,7 +69,6 @@ export class AppView {
                     this.pageChangeSubscription.unsubscribe();
                 }
                 this.pageChangeSubscription = page.changed$.pipe(debounceTime(100)).subscribe((change) => {
-                    console.log(change);
                     this.pageRepository.save(page);
                 });
                 this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));

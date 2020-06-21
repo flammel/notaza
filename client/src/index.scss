@@ -78,7 +78,7 @@ body {
             overflow: hidden;
             padding: 0 0 0 0.25rem;
             &__match {
-                padding: 0.25rem 0;
+                padding: 0.25rem 0.5rem;
             }
             &.active a {
                 background: $darker-blue;
