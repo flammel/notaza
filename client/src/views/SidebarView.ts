@@ -1,4 +1,5 @@
 import { Page } from '../Page';
+import { PageRepository } from '../PageRepository';
 
 interface SearchResult {
     url: string;
@@ -10,9 +11,8 @@ export class SidebarView {
     public readonly $element: HTMLDivElement;
     private readonly $pageList: HTMLUListElement;
     private query: string = '';
-    private pages: Page[] = [];
 
-    constructor() {
+    constructor(private readonly pageRepository: PageRepository) {
         this.$pageList = document.createElement('ul');
         this.$pageList.classList.add('sidebar__list');
 
@@ -40,18 +40,16 @@ export class SidebarView {
         this.$element.classList.add('sidebar');
         this.$element.appendChild($form);
         this.$element.appendChild(this.$pageList);
-    }
 
-    public setPages(pages: Page[]): void {
-        this.pages = pages;
-        this.updateResults();
+        pageRepository.addPagesListener(() => this.updateResults());
     }
 
     private updateResults(): void {
-        const results = this.pages
-            .filter((page) => page.title.toLowerCase().includes(this.query.toLowerCase()))
+        const results = this.pageRepository
+            .getAllPages()
+            .filter((page) => page.getTitle().toLowerCase().includes(this.query.toLowerCase()))
             .map((page) => ({
-                title: page.title,
+                title: page.getTitle(),
                 url: page.id,
                 matches: [],
             }))

@@ -1,5 +1,6 @@
 import { PageParser } from './PageParser';
 import { Page } from './Page';
+import { PageSerializer } from './PageSerializer';
 
 interface ApiPage {
     id: string;
@@ -10,7 +11,11 @@ type SaveResult = { success: true; data: ApiPage[] } | { success: false; error: 
 type DeleteResult = { success: boolean };
 
 export class Api {
-    constructor(private readonly url: string, private readonly pageParser: PageParser) {}
+    constructor(
+        private readonly url: string,
+        private readonly pageParser: PageParser,
+        private readonly pageSerializer: PageSerializer,
+    ) {}
 
     public loadPages(): Promise<Page[]> {
         return fetch(this.url + '/pages')
@@ -26,7 +31,10 @@ export class Api {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(page),
+            body: JSON.stringify({
+                id: page.id,
+                markdown: this.pageSerializer.serialize(page),
+            }),
         })
             .then((res) => res.json())
             .then((json: SaveResult) => {

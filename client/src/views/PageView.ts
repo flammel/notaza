@@ -48,7 +48,7 @@ export class PageView {
     }
 
     public setPage(page: Page, backlinkPages: BacklinkPage[]): void {
-        this.$title.innerHTML = page.title;
+        this.$title.innerHTML = page.getTitle();
         const $children = this.renderBlocks(page.children);
         this.$blocks.innerHTML = '';
         this.$blocks.appendChild($children);

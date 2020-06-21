@@ -1,9 +1,10 @@
+import _ from 'lodash';
 import { SidebarView } from './SidebarView';
 import { NotificationsView } from './NotificationsView';
 import { PageView, BacklinkPage } from './PageView';
 import { Page, Block, PageId } from '../Page';
-import _ from 'lodash';
 import { BlockRenderer } from '../BlockRenderer';
+import { PageRepository } from '../PageRepository';
 
 function getBacklinks(block: Block, target: PageId): Block[] {
     const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
@@ -27,7 +28,7 @@ function computeBacklinks(pages: Iterable<Page>, activePage: Page): BacklinkPage
             }
             if (backlinks.length > 0) {
                 pagesWithLinks.push({
-                    title: page.title,
+                    title: page.getTitle(),
                     id: page.id,
                     backlinks,
                 });
@@ -42,13 +43,13 @@ export class AppView {
     private readonly sidebarView: SidebarView;
     private readonly pageView: PageView;
     private readonly notificationsView: NotificationsView;
-    private activePageId: PageId | undefined;
-    private pages: Map<PageId, Page> | undefined;
+    private readonly pageRepository: PageRepository;
 
-    constructor(renderer: BlockRenderer) {
-        this.sidebarView = new SidebarView();
+    constructor(renderer: BlockRenderer, pageRepository: PageRepository) {
+        this.sidebarView = new SidebarView(pageRepository);
         this.notificationsView = new NotificationsView();
         this.pageView = new PageView(renderer);
+        this.pageRepository = pageRepository;
         this.$element = document.createElement('div');
         this.$element.classList.add('app');
         this.$element.appendChild(this.sidebarView.$element);
@@ -57,22 +58,8 @@ export class AppView {
     }
 
     public setActivePageId(id: PageId): void {
-        this.activePageId = id;
-        this.setActivePage();
-    }
-
-    public setPages(pages: Page[]): void {
-        this.pages = new Map(pages.map((page) => [page.id, page]));
-        this.sidebarView.setPages(pages);
-        this.setActivePage();
-    }
-
-    private setActivePage(): void {
-        if (this.activePageId !== undefined && this.pages !== undefined) {
-            const page = this.pages.get(this.activePageId);
-            if (page instanceof Page) {
-                this.pageView.setPage(page, computeBacklinks(this.pages.values(), page));
-            }
-        }
+        const page = this.pageRepository.getPage(id);
+        page.addChangeListener(() => this.pageRepository.save(page));
+        this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
     }
 }

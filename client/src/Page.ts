@@ -112,14 +112,24 @@ export class Block extends BlockParent {
 
 export class Page extends BlockParent {
     public readonly id: PageId;
-    public readonly title: PageTitle;
+    private title: PageTitle;
     private updatePending = false;
+    private changeListeners: (() => unknown)[] = [];
 
     constructor(rawPage: RawPage) {
         super();
         this.id = rawPage.id;
         this.title = rawPage.title;
         this.children = rawPage.children.map((child) => new Block(child, this));
+    }
+
+    public getTitle(): string {
+        return this.title;
+    }
+
+    public setTitle(title: string): void {
+        this.title = title;
+        this.onChange();
     }
 
     public appendBlock(block: Block): void {
@@ -131,8 +141,14 @@ export class Page extends BlockParent {
             this.updatePending = true;
             setTimeout(() => {
                 this.updatePending = false;
-                console.log(this);
+                for (const listener of this.changeListeners) {
+                    listener();
+                }
             }, 0);
         }
+    }
+
+    public addChangeListener(listener: () => unknown): void {
+        this.changeListeners.push(listener);
     }
 }

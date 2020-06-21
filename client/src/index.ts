@@ -4,11 +4,15 @@ import { PageParser } from './PageParser';
 import { BlockRenderer } from './BlockRenderer';
 import './index.scss';
 import { PageId } from './Page';
+import { PageRepository } from './PageRepository';
+import { PageSerializer } from './PageSerializer';
 
 const pageParser = new PageParser();
+const pageSerializer = new PageSerializer();
 const blockRenderer = new BlockRenderer();
-const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser);
-const appView = new AppView(blockRenderer);
+const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser, pageSerializer);
+const pageRepository = new PageRepository(api);
+const appView = new AppView(blockRenderer, pageRepository);
 document.getElementById('container')?.appendChild(appView.$element);
 
 function urlToPageId(url: string): PageId {
@@ -22,7 +26,7 @@ function urlToPageId(url: string): PageId {
 }
 
 api.loadPages().then((pages) => {
-    appView.setPages(pages);
+    pageRepository.setPages(pages);
     appView.setActivePageId(urlToPageId(window.location.pathname));
 });
 
