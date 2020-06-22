@@ -73,15 +73,21 @@ export class PageView {
                 return;
             }
             const $editor = document.createElement('input');
+            $editor.classList.add('title-editor');
             $editor.value = this.$title.innerText;
             $editor.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
+                if (event.key === 'Enter' || (event.key === 's' && event.ctrlKey)) {
+                    event.preventDefault();
                     this.page?.setTitle($editor.value);
                     this.$title.innerText = $editor.value;
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    this.$title.innerText = this.page?.getTitle() || '';
                 }
             });
             this.$title.innerHTML = '';
             this.$title.appendChild($editor);
+            $editor.focus();
         });
 
         this.$blocks = document.createElement('ul');
