@@ -30,7 +30,7 @@ const links: MarkdownIt.PluginSimple = (md): void => {
 
 // https://github.com/svbergerem/markdown-it-hashtag/blob/master/index.js
 const hashtags: MarkdownIt.PluginSimple = (md): void => {
-    const regex = new RegExp(/(^|\s)#(\w+)/g);
+    const regex = new RegExp(/(^|\s)#([\w-]+)/g);
     md.core.ruler.after('inline', 'hashtag', (state: StateCore): boolean => {
         for (const blockToken of state.tokens) {
             if (blockToken.type === 'inline') {

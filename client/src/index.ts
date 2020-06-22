@@ -33,12 +33,16 @@ api.loadPages().then((pages) => {
 });
 
 document.addEventListener('click', (event) => {
-    if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
-        event.preventDefault();
-        const href = event.target.getAttribute('href');
-        if (href) {
-            window.history.pushState(null, href, href);
-            url$.next(href);
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+        const closestLink = target.closest('a');
+        if (closestLink instanceof HTMLAnchorElement && closestLink.classList.contains('internal')) {
+            event.preventDefault();
+            const href = closestLink.getAttribute('href');
+            if (href) {
+                window.history.pushState(null, href, href);
+                url$.next(href);
+            }
         }
     }
 });

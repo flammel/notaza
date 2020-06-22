@@ -7,6 +7,40 @@ function resize($textarea: HTMLTextAreaElement): void {
     $textarea.style.height = $textarea.scrollHeight + 'px';
 }
 
+class BlockView {
+    public readonly $block: HTMLLIElement;
+    public readonly $inner: HTMLDivElement;
+    public readonly $children: HTMLUListElement;
+
+    constructor(private readonly block: Block, private readonly renderer: BlockRenderer) {
+        this.$block = document.createElement('li');
+        this.$block.classList.add('block');
+
+        this.$inner = document.createElement('div');
+        this.$inner.classList.add('block__inner');
+        this.$block.appendChild(this.$inner);
+
+        this.$children = document.createElement('ul');
+        this.$children.classList.add('block__children', 'blocks');
+        for (const child of block.children) {
+            const view = new BlockView(child, renderer);
+            this.$children.appendChild(view.$block);
+        }
+        this.$block.appendChild(this.$children);
+
+        this.renderContent();
+    }
+
+    public renderContent(): void {
+        const $content = document.createElement('div');
+        $content.classList.add('block__content');
+        $content.innerHTML = this.renderer.render(this.block.getContent());
+        $content.addEventListener('click', () => this.handleBlockClick(block));
+        this.$inner.innerHTML = '';
+        this.$inner.appendChild($content);
+    }
+}
+
 interface BlockElements {
     $block: HTMLLIElement;
     $inner: HTMLDivElement;
@@ -124,7 +158,7 @@ export class PageView {
         return $block;
     }
 
-    private renderBlockContent(block: Block): HTMLDivElement {
+    private renderBlockContent(block: Block): void {
         const elements = this.blockElements.get(block);
         if (elements === undefined) {
             throw new Error('Tried to render content of unrendered block');
@@ -135,7 +169,6 @@ export class PageView {
         $content.addEventListener('click', () => this.handleBlockClick(block));
         elements.$inner.innerHTML = '';
         elements.$inner.appendChild($content);
-        return $content;
     }
 
     private renderBlockEditor(block: Block): HTMLTextAreaElement {
@@ -182,6 +215,7 @@ export class PageView {
             const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
             const contentAfter = $textarea.value.substring($textarea.selectionEnd);
             editing.setContent(contentBefore);
+            $textarea.value = contentBefore;
             this.renderBlockContent(editing);
             if (editing.children.length === 0) {
                 const parent = editing.getParent();
@@ -191,14 +225,15 @@ export class PageView {
                 const newBlock = parent.insertChild(contentAfter, editing);
                 const $newBlock = this.renderBlock(newBlock);
                 elements.$block.insertAdjacentElement('afterend', $newBlock);
-                this.handleBlockClick(newBlock);
+                this.handleBlockClick(contentBefore.length === 0 && contentAfter.length !== 0 ? editing : newBlock);
             } else {
                 const newBlock = editing.prependChild(contentAfter);
                 const $newBlock = this.renderBlock(newBlock);
                 elements.$children.insertAdjacentElement('afterbegin', $newBlock);
-                this.handleBlockClick(newBlock);
+                this.handleBlockClick(contentBefore.length === 0 && contentAfter.length !== 0 ? editing : newBlock);
             }
         } else if (event.key === 'Tab') {
+            editing.setContent($textarea.value);
             event.preventDefault();
             if (event.shiftKey) {
                 const parent = editing.getParent();
@@ -226,13 +261,16 @@ export class PageView {
             }
         } else if (event.key === 'Backspace' && $textarea.value.length === 0) {
             event.preventDefault();
+            const prev = editing.getPrev();
             const parent = editing.getParent();
-            if (parent === undefined) {
+            if (parent === undefined || (prev === undefined && parent instanceof Page)) {
                 return;
             }
             parent.removeChild(editing);
             elements.$block.remove();
-            this.editing = undefined;
+            if (prev) {
+                this.editing = [prev, this.renderBlockEditor(prev)];
+            }
         } else if (event.key === 's' && event.ctrlKey) {
             event.preventDefault();
             editing.setContent($textarea.value);
@@ -244,7 +282,12 @@ export class PageView {
         } else if (event.key === 'ArrowUp' && event.ctrlKey) {
             event.preventDefault();
             const prev = editing.getPrev();
-            if (prev !== undefined) {
+            if (prev == undefined) {
+                const parent = editing.getParent();
+                if (parent instanceof Block) {
+                    this.handleBlockClick(parent);
+                }
+            } else {
                 this.handleBlockClick(prev);
             }
         } else if (event.key === 'ArrowDown' && event.ctrlKey) {
