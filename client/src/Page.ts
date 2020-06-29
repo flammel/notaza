@@ -57,10 +57,10 @@ abstract class BlockParent {
 }
 
 export class Block extends BlockParent {
-    private readonly parent: BlockParent | undefined;
+    private readonly parent: BlockParent;
     private content: string;
 
-    constructor(rawBlock: RawBlock, parent: BlockParent | undefined) {
+    constructor(rawBlock: RawBlock, parent: BlockParent) {
         super();
         this.content = rawBlock.content;
         this.children = rawBlock.children.map((child) => new Block(child, this));
@@ -82,7 +82,7 @@ export class Block extends BlockParent {
         return this.content;
     }
 
-    public getParent(): BlockParent | undefined {
+    public getParent(): BlockParent {
         return this.parent;
     }
 
@@ -158,5 +158,17 @@ export class Page extends BlockParent {
 
     public getFlatBlocks(): Block[] {
         return this.children.flatMap((block) => block.flatten());
+    }
+}
+
+interface BacklinkGroup {
+    page: Page;
+    backlinks: Block[];
+}
+
+export class PageWithBacklinks {
+    public readonly backlinks: BacklinkGroup[];
+    constructor(public readonly page: Page) {
+        this.backlinks = [];
     }
 }

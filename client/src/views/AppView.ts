@@ -1,77 +1,76 @@
 import _ from 'lodash';
 import { SidebarView } from './SidebarView';
 import { NotificationsView } from './NotificationsView';
-import { PageView, BacklinkPage } from './PageView';
-import { Page, Block, PageId } from '../Page';
+import { PageView } from './PageView';
+import { PageWithBacklinks, PageId } from '../Page';
 import { BlockRenderer } from '../BlockRenderer';
 import { PageRepository } from '../PageRepository';
 import { Observable, combineLatest, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 
-function getBacklinks(block: Block, target: PageId): Block[] {
-    const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
-    if (block.getContent().includes('](./' + target + '.md)') || block.getContent().includes('#' + target)) {
-        result.push(block);
-    }
-    return result;
-}
+// function getBacklinks(block: Block, target: PageId): Block[] {
+//     const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
+//     if (block.getContent().includes('](./' + target + '.md)') || block.getContent().includes('#' + target)) {
+//         result.push(block);
+//     }
+//     return result;
+// }
 
-function computeBacklinks(pages: Iterable<Page>, activePage: Page): BacklinkPage[] {
-    const pagesWithLinks = [];
-    for (const page of pages) {
-        if (page.id !== activePage.id) {
-            const backlinks = [];
-            for (const child of page.children) {
-                backlinks.push(
-                    ...getBacklinks(child, activePage.id).map((block) => ({
-                        content: block.getContent(),
-                    })),
-                );
-            }
-            if (backlinks.length > 0) {
-                pagesWithLinks.push({
-                    title: page.getTitle(),
-                    id: page.id,
-                    backlinks,
-                });
-            }
-        }
-    }
-    return pagesWithLinks;
-}
+// function computeBacklinks(pages: Iterable<Page>, activePage: Page): BacklinkPage[] {
+//     const pagesWithLinks = [];
+//     for (const page of pages) {
+//         if (page.id !== activePage.id) {
+//             const backlinks = [];
+//             for (const child of page.children) {
+//                 backlinks.push(
+//                     ...getBacklinks(child, activePage.id).map((block) => ({
+//                         content: block.getContent(),
+//                     })),
+//                 );
+//             }
+//             if (backlinks.length > 0) {
+//                 pagesWithLinks.push({
+//                     title: page.getTitle(),
+//                     id: page.id,
+//                     backlinks,
+//                 });
+//             }
+//         }
+//     }
+//     return pagesWithLinks;
+// }
 
 export class AppView {
     public readonly $element: HTMLElement;
-    private readonly sidebarView: SidebarView;
-    private readonly pageView: PageView;
-    private readonly notificationsView: NotificationsView;
-    private readonly pageRepository: PageRepository;
-    private pageChangeSubscription: Subscription | undefined;
 
     constructor(renderer: BlockRenderer, pageRepository: PageRepository, activePageId$: Observable<PageId>) {
-        this.sidebarView = new SidebarView(pageRepository);
-        this.notificationsView = new NotificationsView();
-        this.pageView = new PageView(renderer);
-        this.pageRepository = pageRepository;
+        const sidebarView = new SidebarView(pageRepository);
+        const notificationsView = new NotificationsView();
+
         this.$element = document.createElement('div');
         this.$element.classList.add('app');
-        this.$element.appendChild(this.sidebarView.$element);
-        this.$element.appendChild(this.notificationsView.$element);
-        this.$element.appendChild(this.pageView.$element);
-        this.pageRepository.notifications$.subscribe(({ message, type }) =>
-            this.notificationsView.notify(message, type),
-        );
+        this.$element.appendChild(sidebarView.$element);
+        this.$element.appendChild(notificationsView.$element);
+        pageRepository.notifications$.subscribe(({ message, type }) => notificationsView.notify(message, type));
 
-        combineLatest([activePageId$, this.pageRepository.pagesLoaded$]).subscribe(([id, loaded]) => {
+        let pageView: PageView | undefined;
+        let pageChangeSubscription: Subscription | undefined;
+        combineLatest([activePageId$, pageRepository.pagesLoaded$]).subscribe(([id, loaded]) => {
             if (loaded) {
-                const page = this.pageRepository.getPage(id);
-                if (this.pageChangeSubscription !== undefined) {
-                    this.pageChangeSubscription.unsubscribe();
+                const page = pageRepository.getPage(id);
+                if (pageChangeSubscription !== undefined) {
+                    pageChangeSubscription.unsubscribe();
                 }
-                this.pageChangeSubscription = page.changed$.pipe(debounceTime(100)).subscribe((change) => {
-                    this.pageRepository.save(page);
+                pageChangeSubscription = page.changed$.pipe(debounceTime(100)).subscribe((change) => {
+                    pageRepository.save(page);
                 });
-                this.pageView.setPage(page, computeBacklinks(this.pageRepository.getAllPages(), page));
+                const view = new PageView(renderer, new PageWithBacklinks(page));
+                if (pageView === undefined) {
+                    this.$element.appendChild(view.$root);
+                } else {
+                    pageView.$root.replaceWith(view.$root);
+                }
+                pageView = view;
             }
         });
     }
