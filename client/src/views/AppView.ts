@@ -11,7 +11,13 @@ import { debounceTime } from 'rxjs/operators';
 function getBacklinks(block: Block, target: PageId): Block[] {
     const result = _.flatten(block.children.map((child) => getBacklinks(child, target)));
     if (block.getContent().includes('](./' + target + '.md)') || block.getContent().includes('#' + target)) {
-        result.push(block);
+        let current = block;
+        let parent: Block | Page = block;
+        while (parent instanceof Block) {
+            current = parent;
+            parent = parent.getParent();
+        }
+        result.push(current);
     }
     return result;
 }
@@ -20,13 +26,9 @@ function computeBacklinks(pages: Iterable<Page>, activePage: Page): BacklinkPage
     const pagesWithLinks = [];
     for (const page of pages) {
         if (page.id !== activePage.id) {
-            const backlinks = [];
+            const backlinks: Block[] = [];
             for (const child of page.children) {
-                backlinks.push(
-                    ...getBacklinks(child, activePage.id).map((block) => ({
-                        content: block.getContent(),
-                    })),
-                );
+                backlinks.push(...getBacklinks(child, activePage.id));
             }
             if (backlinks.length > 0) {
                 pagesWithLinks.push({
@@ -51,7 +53,7 @@ export class AppView {
     constructor(renderer: BlockRenderer, pageRepository: PageRepository, activePageId$: Observable<PageId>) {
         this.sidebarView = new SidebarView(pageRepository);
         this.notificationsView = new NotificationsView();
-        this.pageView = new PageView(renderer);
+        this.pageView = new PageView(renderer, pageRepository);
         this.pageRepository = pageRepository;
         this.$element = document.createElement('div');
         this.$element.classList.add('app');

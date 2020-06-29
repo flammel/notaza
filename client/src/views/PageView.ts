@@ -1,44 +1,11 @@
 import { BlockRenderer } from '../BlockRenderer';
 import { Page, Block, PageId } from '../Page';
+import { PageRepository } from '../PageRepository';
 
 function resize($textarea: HTMLTextAreaElement): void {
     $textarea.setAttribute('rows', '1');
     $textarea.style.height = 'auto';
     $textarea.style.height = $textarea.scrollHeight + 'px';
-}
-
-class BlockView {
-    public readonly $block: HTMLLIElement;
-    public readonly $inner: HTMLDivElement;
-    public readonly $children: HTMLUListElement;
-
-    constructor(private readonly block: Block, private readonly renderer: BlockRenderer) {
-        this.$block = document.createElement('li');
-        this.$block.classList.add('block');
-
-        this.$inner = document.createElement('div');
-        this.$inner.classList.add('block__inner');
-        this.$block.appendChild(this.$inner);
-
-        this.$children = document.createElement('ul');
-        this.$children.classList.add('block__children', 'blocks');
-        for (const child of block.children) {
-            const view = new BlockView(child, renderer);
-            this.$children.appendChild(view.$block);
-        }
-        this.$block.appendChild(this.$children);
-
-        this.renderContent();
-    }
-
-    public renderContent(): void {
-        const $content = document.createElement('div');
-        $content.classList.add('block__content');
-        $content.innerHTML = this.renderer.render(this.block.getContent());
-        $content.addEventListener('click', () => this.handleBlockClick(block));
-        this.$inner.innerHTML = '';
-        this.$inner.appendChild($content);
-    }
 }
 
 interface BlockElements {
@@ -50,7 +17,50 @@ interface BlockElements {
 export interface BacklinkPage {
     id: PageId;
     title: string;
-    backlinks: { content: string }[];
+    backlinks: Block[];
+}
+
+class Autocomplete {
+    public readonly $root: HTMLElement;
+    private isOpen = false;
+
+    public constructor(private readonly pages: Page[], $textarea: HTMLTextAreaElement) {
+        this.$root = document.createElement('ul');
+        this.$root.classList.add('autocomplete');
+
+        $textarea.addEventListener('keyup', (event) => {
+            if (this.isOpen) {
+                const beforeSel = $textarea.value.substring(0, $textarea.selectionStart).match(/#([\w-]+)$/);
+                if (beforeSel !== null) {
+                    this.open(beforeSel[1]);
+                } else {
+                    this.close();
+                }
+            } else if (event.key === '#') {
+                this.open('');
+            }
+        });
+    }
+
+    private close(): void {
+        this.$root.innerHTML = '';
+        this.isOpen = false;
+    }
+
+    private open(filter: string): void {
+        this.isOpen = true;
+        this.$root.innerHTML = '';
+        for (const page of this.pages) {
+            if (
+                page.getTitle().toLowerCase().includes(filter.toLowerCase()) ||
+                page.id.toLowerCase().includes(filter.toLowerCase())
+            ) {
+                const $item = document.createElement('li');
+                $item.innerText = page.getTitle();
+                this.$root.appendChild($item);
+            }
+        }
+    }
 }
 
 export class PageView {
@@ -62,7 +72,7 @@ export class PageView {
     private blockElements = new Map<Block, BlockElements>();
     private page: Page | undefined;
 
-    constructor(private readonly renderer: BlockRenderer) {
+    constructor(private readonly renderer: BlockRenderer, private readonly pageRepository: PageRepository) {
         this.$element = document.createElement('div');
         this.$element.classList.add('page');
 
@@ -124,9 +134,7 @@ export class PageView {
 
             const $pageBacklinks = document.createElement('ul');
             for (const backlinkBlock of backlinkPage.backlinks) {
-                const $backlink = document.createElement('li');
-                $backlink.innerHTML = this.renderer.render(backlinkBlock.content);
-                $pageBacklinks.appendChild($backlink);
+                $pageBacklinks.appendChild(this.renderBlock(backlinkBlock));
             }
 
             const $li = document.createElement('li');
@@ -172,7 +180,14 @@ export class PageView {
         const $content = document.createElement('div');
         $content.classList.add('block__content');
         $content.innerHTML = this.renderer.render(block.getContent());
-        $content.addEventListener('click', () => this.handleBlockClick(block));
+        $content.addEventListener('click', (event) => {
+            if (event.target instanceof HTMLInputElement) {
+                block.toggleDone();
+                $content.innerHTML = this.renderer.render(block.getContent());
+            } else {
+                this.handleBlockClick(block);
+            }
+        });
         elements.$inner.innerHTML = '';
         elements.$inner.appendChild($content);
     }
@@ -182,17 +197,22 @@ export class PageView {
         if (elements === undefined) {
             throw new Error('Tried to render editor of unrendered block');
         }
-        const $editor = document.createElement('textarea');
-        $editor.classList.add('block__editor', 'editor');
-        $editor.value = block.getContent();
-        $editor.addEventListener('input', () => this.handleEditorInput($editor));
-        $editor.addEventListener('keydown', (event) => this.handleEditorKeyDown(event, $editor));
+
+        const $textarea = document.createElement('textarea');
+        const autocomplete = new Autocomplete(this.pageRepository.getAllPages(), $textarea);
+        $textarea.classList.add('block__editor', 'editor');
+        $textarea.value = block.getContent();
+        $textarea.addEventListener('input', () => this.handleEditorInput($textarea));
+        $textarea.addEventListener('keydown', (event) => this.handleEditorKeyDown(event, $textarea));
         elements.$inner.innerHTML = '';
-        elements.$inner.appendChild($editor);
-        resize($editor);
-        $editor.focus();
-        $editor.setSelectionRange($editor.value.length, $editor.value.length);
-        return $editor;
+        elements.$inner.appendChild($textarea);
+        resize($textarea);
+        $textarea.focus();
+        $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
+
+        elements.$inner.appendChild(autocomplete.$root);
+
+        return $textarea;
     }
 
     public handleBlockClick(block: Block): void {

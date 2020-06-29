@@ -16,23 +16,24 @@ export type PageTitle = string;
 abstract class BlockParent {
     public children: Block[] = [];
     public abstract onChange(message: string): void;
+    public abstract createChild(content: string): Block;
 
     public prependChild(content: string): Block {
-        const block = new Block({ content, children: [] }, this);
+        const block = this.createChild(content);
         this.children.splice(0, 0, block);
         this.onChange('prependChild');
         return block;
     }
 
     public appendChild(content: string): Block {
-        const block = new Block({ content, children: [] }, this);
+        const block = this.createChild(content);
         this.children.push(block);
         this.onChange('appendChild');
         return block;
     }
 
     public insertChild(content: string, after?: Block): Block {
-        const block = new Block({ content, children: [] }, this);
+        const block = this.createChild(content);
         if (after === undefined) {
             this.children.push(block);
         } else {
@@ -57,10 +58,10 @@ abstract class BlockParent {
 }
 
 export class Block extends BlockParent {
-    private readonly parent: BlockParent | undefined;
+    private readonly parent: Block | Page;
     private content: string;
 
-    constructor(rawBlock: RawBlock, parent: BlockParent | undefined) {
+    constructor(rawBlock: RawBlock, parent: Block | Page) {
         super();
         this.content = rawBlock.content;
         this.children = rawBlock.children.map((child) => new Block(child, this));
@@ -68,7 +69,7 @@ export class Block extends BlockParent {
     }
 
     public onChange(message: string): void {
-        this.parent?.onChange(message);
+        this.parent.onChange(message);
     }
 
     public setContent(content: string): void {
@@ -82,7 +83,7 @@ export class Block extends BlockParent {
         return this.content;
     }
 
-    public getParent(): BlockParent | undefined {
+    public getParent(): Block | Page {
         return this.parent;
     }
 
@@ -115,6 +116,18 @@ export class Block extends BlockParent {
 
     public flatten(): Block[] {
         return [this, ...this.children.flatMap((child) => child.flatten())];
+    }
+
+    public toggleDone(): void {
+        if (this.content.indexOf('[] ') === 0) {
+            this.content = '[x] ' + this.content.substring(3);
+        } else if (this.content.indexOf('[x] ') === 0) {
+            this.content = '[] ' + this.content.substring(4);
+        }
+    }
+
+    public createChild(content: string): Block {
+        return new Block({ content, children: [] }, this);
     }
 }
 
@@ -158,5 +171,9 @@ export class Page extends BlockParent {
 
     public getFlatBlocks(): Block[] {
         return this.children.flatMap((block) => block.flatten());
+    }
+
+    public createChild(content: string): Block {
+        return new Block({ content, children: [] }, this);
     }
 }
