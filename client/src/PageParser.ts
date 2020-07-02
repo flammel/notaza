@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { Page, PageId, PageTitle, RawBlock } from './Page';
+import { Page, PageId, Block } from './model';
 
 export class PageParser {
     public parse(id: PageId, rawMarkdown: string): Page {
@@ -7,26 +7,27 @@ export class PageParser {
             const [frontMatter, markdown] = this.splitRawMarkdown(rawMarkdown);
             const title = this.getTitle(frontMatter);
             const children = this.parseBlocks(markdown);
-            const page = new Page({
+            return {
                 id,
                 title,
                 children,
-            });
-            return page;
+            };
         } catch (e) {
-            console.warn(id, rawMarkdown);
-            const page = new Page({
+            return {
                 id,
                 title: id,
                 children: [
-                    { content: 'Page could not be parsed: ' + (e instanceof Error ? e.message : ''), children: [] },
+                    {
+                        id: _.uniqueId(),
+                        content: 'Page could not be parsed: ' + (e instanceof Error ? e.message : ''),
+                        children: [],
+                    },
                 ],
-            });
-            return page;
+            };
         }
     }
 
-    private getTitle(frontMatter: string): PageTitle {
+    private getTitle(frontMatter: string): string {
         const match = frontMatter.match(/^title: (.*)$/gm);
         if (match !== null && match[0] !== undefined) {
             return match[0].substring('title: '.length);
@@ -34,7 +35,7 @@ export class PageParser {
         return 'Untitled';
     }
 
-    private parseBlocks(markdown: string): RawBlock[] {
+    private parseBlocks(markdown: string): Block[] {
         if (markdown === '') {
             return [];
         }
@@ -55,11 +56,16 @@ export class PageParser {
             }
         }
 
-        const rootBlock: RawBlock & { indentation: number } = { content: '', children: [], indentation: -1 };
-        const stack: Array<RawBlock & { indentation: number }> = [rootBlock];
+        const rootBlock: Block & { indentation: number } = {
+            id: _.uniqueId(),
+            content: '',
+            children: [],
+            indentation: -1,
+        };
+        const stack: Array<Block & { indentation: number }> = [rootBlock];
         for (const group of groups) {
             const peek = stack[stack.length - 1];
-            const block = { content: group[1].join('\n'), children: [], indentation: group[0] };
+            const block = { id: _.uniqueId(), content: group[1].join('\n'), children: [], indentation: group[0] };
             if (block.indentation > peek.indentation) {
                 peek.children.push(block);
                 stack.push(block);

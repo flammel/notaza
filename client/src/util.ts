@@ -1,13 +1,22 @@
-function leftPad(x: number): string {
-    return ('0' + x).substr(-2);
+function padLeadingZero(x: number): string {
+    return x.toString().padStart(2, '0');
+}
+
+export function notUndefined<T>(x: T | undefined): x is T {
+    return x !== undefined;
+}
+
+// https://fettblog.eu/typescript-hasownproperty/
+export function hasOwnProperty<X extends {}, Y extends PropertyKey>(obj: X, prop: Y): obj is X & Record<Y, unknown> {
+    return obj.hasOwnProperty(prop);
 }
 
 export function dateToString(date: Date): string {
-    return date.getFullYear() + '-' + leftPad(date.getMonth() + 1) + '-' + leftPad(date.getDate());
+    return date.getFullYear() + '-' + padLeadingZero(date.getMonth() + 1) + '-' + padLeadingZero(date.getDate());
 }
 
 export function dateTimeToString(date: Date): string {
-    return dateToString(date) + ' ' + leftPad(date.getHours()) + ':' + leftPad(date.getMinutes());
+    return dateToString(date) + ' ' + padLeadingZero(date.getHours()) + ':' + padLeadingZero(date.getMinutes());
 }
 
 /**
@@ -21,4 +30,10 @@ export function makeId(): string {
         result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
+}
+
+export function resizeTextarea($textarea: HTMLTextAreaElement): void {
+    $textarea.setAttribute('rows', '1');
+    $textarea.style.height = 'auto';
+    $textarea.style.height = $textarea.scrollHeight + 'px';
 }

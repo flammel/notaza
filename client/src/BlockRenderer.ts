@@ -2,6 +2,7 @@ import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
 import _ from 'lodash';
+import { Block } from './model';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -104,7 +105,7 @@ export class BlockRenderer {
         });
     }
 
-    public render(markdown: string): string {
-        return this.memoized(markdown);
+    public render(block: Block): string {
+        return this.memoized(block.content);
     }
 }
