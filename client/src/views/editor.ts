@@ -1,0 +1,122 @@
+import { Block, Page } from '../model';
+import { resizeTextarea } from '../util';
+import { Dispatch } from '../framework';
+import { splitBlock, unindentBlock, indentBlock, removeBlock, stopEditing } from '../messages/messages';
+
+class Autocomplete {
+    public readonly $root: HTMLElement;
+    private isOpen = false;
+
+    public constructor(private readonly pages: Page[], private readonly $textarea: HTMLTextAreaElement) {
+        this.$root = document.createElement('ul');
+        this.$root.classList.add('autocomplete');
+
+        $textarea.addEventListener('keyup', (event) => {
+            if (this.isOpen) {
+                const beforeSel = $textarea.value.substring(0, $textarea.selectionStart).match(/#([\w-]+)$/);
+                if (beforeSel !== null) {
+                    this.open(beforeSel[1]);
+                } else {
+                    this.close();
+                }
+            } else if (event.key === '#') {
+                this.open('');
+            }
+        });
+    }
+
+    private close(): void {
+        this.$root.innerHTML = '';
+        this.isOpen = false;
+    }
+
+    private open(filter: string): void {
+        this.isOpen = true;
+        this.$root.innerHTML = '';
+        for (const page of this.pages) {
+            if (
+                page.title.toLowerCase().includes(filter.toLowerCase()) ||
+                page.id.toLowerCase().includes(filter.toLowerCase())
+            ) {
+                const $item = document.createElement('li');
+                $item.innerText = page.title;
+                $item.addEventListener('click', () => {
+                    const beforeCursor = this.$textarea.value.substring(0, this.$textarea.selectionStart);
+                    this.$textarea.value =
+                        beforeCursor.substring(0, beforeCursor.lastIndexOf('#')) +
+                        '#' +
+                        page.id +
+                        this.$textarea.value.substring(this.$textarea.selectionEnd);
+                    this.close();
+                    this.$textarea.focus();
+                });
+                this.$root.appendChild($item);
+            }
+        }
+    }
+}
+
+export class Editor {
+    private readonly $textarea: HTMLTextAreaElement;
+    private readonly autocomplete: Autocomplete;
+
+    public constructor(block: Block, pages: Page[], dispatch: Dispatch) {
+        const $textarea = document.createElement('textarea');
+        $textarea.classList.add('editor');
+        $textarea.value = block.content;
+        $textarea.addEventListener('input', () => resizeTextarea($textarea));
+        $textarea.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
+                const contentAfter = $textarea.value.substring($textarea.selectionEnd);
+                dispatch(
+                    splitBlock({
+                        before: contentBefore,
+                        after: contentAfter,
+                    }),
+                );
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                if (event.shiftKey) {
+                    dispatch(unindentBlock({ content: $textarea.value }));
+                } else {
+                    dispatch(indentBlock({ content: $textarea.value }));
+                }
+            } else if (event.key === 'Delete' && event.ctrlKey) {
+                event.preventDefault();
+                dispatch(removeBlock({}));
+            } else if (event.key === 's' && event.ctrlKey) {
+                event.preventDefault();
+                dispatch(stopEditing({ content: $textarea.value }));
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                dispatch(stopEditing({ content: $textarea.value }));
+            } else if (event.key === 'k' && event.ctrlKey) {
+                event.preventDefault();
+                this.autoLink();
+            }
+        });
+
+        this.$textarea = $textarea;
+        this.autocomplete = new Autocomplete(pages, $textarea);
+    }
+
+    public appendTo($parent: HTMLElement): void {
+        $parent.appendChild(this.$textarea);
+        $parent.appendChild(this.autocomplete.$root);
+
+        resizeTextarea(this.$textarea);
+        this.$textarea.focus();
+        this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);
+    }
+
+    private autoLink(): void {
+        const selected = this.$textarea.value.substring(this.$textarea.selectionStart, this.$textarea.selectionEnd);
+        const urlified = selected.toLowerCase().replace(' ', '-');
+        this.$textarea.value =
+            this.$textarea.value.substring(0, this.$textarea.selectionStart) +
+            `[${selected}](./${urlified}.md)` +
+            this.$textarea.value.substring(this.$textarea.selectionEnd);
+    }
+}

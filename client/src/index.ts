@@ -48,9 +48,10 @@ view$
     )
     .subscribe();
 
-api.loadPages().then((pages) => app.dispatch(messages.pagesLoaded({ pages })));
-
-app.dispatch(messages.setUrl({ url: window.location.pathname }));
+api.loadPages().then((pages) => {
+    app.dispatch(messages.pagesLoaded({ pages }));
+    app.dispatch(messages.setUrl({ url: window.location.pathname }));
+});
 
 document.addEventListener('click', (event) => {
     const target = event.target;

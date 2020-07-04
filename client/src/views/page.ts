@@ -1,22 +1,13 @@
 import { VNode } from 'snabbdom/build/package/vnode';
 import { h } from 'snabbdom/build/package/h';
 
-import { Block, AppState, BlockId } from '../model';
-import { resizeTextarea } from '../util';
+import { Block, AppState, BlockId, Page } from '../model';
 import { BlockRenderer } from '../BlockRenderer';
 import { selectBacklinks } from '../selectors/backlinks';
 import { selectActivePage } from '../selectors/activePage';
 import { Dispatch } from '../framework';
-import {
-    startEditing,
-    toggleDone,
-    splitBlock,
-    unindentBlock,
-    indentBlock,
-    removeBlock,
-    stopEditing,
-    setPageTitle,
-} from '../messages/messages';
+import { startEditing, toggleDone, setPageTitle } from '../messages/messages';
+import { Editor } from './editor';
 
 function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
     return h('div.block__content', {
@@ -33,45 +24,14 @@ function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: Block
     });
 }
 
-function blockEditorView(block: Block, dispatch: Dispatch): VNode {
-    return h('textarea.block__editor.editor', {
-        props: { innerHTML: block.content },
+function blockEditorView(block: Block, pages: Page[], dispatch: Dispatch): VNode {
+    return h('div.block__editor', {
         hook: {
-            insert: (vnode: VNode): void => {
-                const $textarea = vnode.elm as HTMLTextAreaElement;
-                resizeTextarea($textarea);
-                $textarea.focus();
-                $textarea.setSelectionRange($textarea.value.length, $textarea.value.length);
-                $textarea.addEventListener('input', () => resizeTextarea($textarea));
-                $textarea.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
-                        const contentAfter = $textarea.value.substring($textarea.selectionEnd);
-                        dispatch(
-                            splitBlock({
-                                before: contentBefore,
-                                after: contentAfter,
-                            }),
-                        );
-                    } else if (event.key === 'Tab') {
-                        event.preventDefault();
-                        if (event.shiftKey) {
-                            dispatch(unindentBlock({ content: $textarea.value }));
-                        } else {
-                            dispatch(indentBlock({ content: $textarea.value }));
-                        }
-                    } else if (event.key === 'Backspace' && $textarea.value.length === 0) {
-                        event.preventDefault();
-                        dispatch(removeBlock({}));
-                    } else if (event.key === 's' && event.ctrlKey) {
-                        event.preventDefault();
-                        dispatch(stopEditing({ content: $textarea.value }));
-                    } else if (event.key === 'Escape') {
-                        event.preventDefault();
-                        dispatch(stopEditing({ content: $textarea.value }));
-                    }
-                });
+            insert: (vnode): void => {
+                if (vnode.elm instanceof HTMLElement) {
+                    const editor = new Editor(block, pages, dispatch);
+                    editor.appendTo(vnode.elm);
+                }
             },
         },
     });
@@ -80,16 +40,19 @@ function blockEditorView(block: Block, dispatch: Dispatch): VNode {
 function blockView(
     block: Block,
     editing: BlockId | undefined,
+    pages: Page[],
     dispatch: Dispatch,
     blockRenderer: BlockRenderer,
 ): VNode {
     return h('li.block', [
         h('div.block__inner', [
-            editing === block.id ? blockEditorView(block, dispatch) : blockContentView(block, dispatch, blockRenderer),
+            editing === block.id
+                ? blockEditorView(block, pages, dispatch)
+                : blockContentView(block, dispatch, blockRenderer),
         ]),
         h(
             'ul.block__children.blocks',
-            block.children.map((child) => blockView(child, editing, dispatch, blockRenderer)),
+            block.children.map((child) => blockView(child, editing, pages, dispatch, blockRenderer)),
         ),
     ]);
 }
@@ -113,7 +76,9 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                   ),
                   h(
                       'ul.blocks',
-                      page.children.map((block) => blockView(block, state.editing, dispatch, blockRenderer)),
+                      page.children.map((block) =>
+                          blockView(block, state.editing, state.pages, dispatch, blockRenderer),
+                      ),
                   ),
                   h('h2', 'Backlinks'),
                   h(
@@ -124,7 +89,7 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                               h(
                                   'ul.blocks',
                                   backlinkPage.backlinks.map((block) =>
-                                      blockView(block, undefined, dispatch, blockRenderer),
+                                      blockView(block, undefined, state.pages, dispatch, blockRenderer),
                                   ),
                               ),
                           ]),
