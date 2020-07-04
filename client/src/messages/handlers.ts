@@ -113,7 +113,8 @@ export function removeBlock(api: Api, state: AppState): AppState | Effects<AppSt
 export function splitBlock(api: Api, state: AppState, before: string, after: string): AppState | Effects<AppState> {
     const editing = state.editing;
     if (editing) {
-        const newBlock = { id: makeId(), content: after, children: [] };
+        const newContent = (before.startsWith('[] ') || before.startsWith('[x] ')) && after === '' ? '[] ' : after;
+        const newBlock = { id: makeId(), content: newContent, children: [] };
         return saveEffect(api, {
             ...state,
             ...helpers.modifyActivePage(state, (page) => helpers.splitBlock(page, editing, before, newBlock)),
