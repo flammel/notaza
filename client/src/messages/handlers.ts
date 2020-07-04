@@ -1,4 +1,4 @@
-import { AppState, Page, BlockId } from '../model';
+import { AppState, Page, BlockId, Notification } from '../model';
 import { makeId, dateToString } from '../util';
 import * as helpers from './helpers';
 import * as messages from './messages';
@@ -28,7 +28,7 @@ export function setUrl(state: AppState, url: string): Effects<AppState> {
         state: { ...state, pages: newPages, activePage: pageId, editing: undefined },
         run: {
             fn: (): Promise<undefined> => {
-                document.title = 'Notaza: ' + (found ? found.title : pageId);
+                document.title = (found ? found.title : pageId) + ' | Notaza';
                 return new Promise(() => undefined);
             },
             cb: (): undefined => undefined,
@@ -57,9 +57,25 @@ function saveEffect(api: Api, state: AppState): Effects<AppState> {
                   run: {
                       fn: (): Promise<unknown> => api.savePage(page),
                       cb: (suc): Message | undefined =>
-                          suc === null ? messages.pageSaved({}) : messages.pageSaveFailed({}),
+                          suc === null ? messages.pageSaveFailed({}) : messages.pageSaved({}),
                   },
               }),
+    });
+}
+
+export function addNotification(state: AppState, notification: Notification): Effects<AppState> {
+    return effects({
+        state: { ...state, notifications: [...state.notifications, notification] },
+        run: {
+            fn: (): Promise<undefined> => new Promise((resolve) => setTimeout(() => resolve(undefined), 2000)),
+            cb: (): Message => messages.removeNotification({ notification }),
+        },
+    });
+}
+
+export function removeNotification(state: AppState, notification: Notification): Effects<AppState> {
+    return effects({
+        state: { ...state, notifications: state.notifications.filter((existing) => existing.id !== notification.id) },
     });
 }
 

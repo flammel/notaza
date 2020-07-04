@@ -4,6 +4,7 @@ import { VNode } from 'snabbdom/build/package/vnode';
 import { attributesModule } from 'snabbdom/build/package/modules/attributes';
 import { propsModule } from 'snabbdom/build/package/modules/props';
 import { eventListenersModule } from 'snabbdom/build/package/modules/eventlisteners';
+import { classModule } from 'snabbdom/build/package/modules/class';
 
 import * as framework from './framework';
 import * as messages from './messages/messages';
@@ -16,6 +17,7 @@ import { PageSerializer } from './PageSerializer';
 import { AppState, initialState } from './model';
 import { appView } from './views/app';
 import './index.scss';
+import { makeId } from './util';
 
 const pageParser = new PageParser();
 const pageSerializer = new PageSerializer();
@@ -34,11 +36,26 @@ const app = framework.init<AppState>(initialState, [
     on(messages.splitBlock, (state, { before, after }) => handlers.splitBlock(api, state, before, after)),
     on(messages.indentBlock, (state, { content }) => handlers.indentBlock(api, state, content)),
     on(messages.unindentBlock, (state, { content }) => handlers.unindentBlock(api, state, content)),
+    on(messages.removeNotification, (state, { notification }) => handlers.removeNotification(state, notification)),
+    on(messages.pageSaved, (state) =>
+        handlers.addNotification(state, {
+            id: makeId(),
+            content: 'page saved',
+            type: 'success',
+        }),
+    ),
+    on(messages.pageSaveFailed, (state) =>
+        handlers.addNotification(state, {
+            id: makeId(),
+            content: 'page save failed',
+            type: 'error',
+        }),
+    ),
 ]);
 
 const view$ = app.state$.pipe(map((state) => appView(state, app.dispatch, blockRenderer)));
 
-const patch = init([attributesModule, propsModule, eventListenersModule]);
+const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
 view$
     .pipe(
         scan(
