@@ -16,7 +16,7 @@ function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: Block
             click: (event: Event): void => {
                 if (event.target instanceof HTMLInputElement) {
                     dispatch(toggleDone({ blockId: block.id }));
-                } else {
+                } else if (!(event.target instanceof HTMLAnchorElement)) {
                     dispatch(startEditing({ blockId: block.id }));
                 }
             },
