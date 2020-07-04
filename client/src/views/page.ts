@@ -82,18 +82,19 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                   ),
                   h('h2', 'Backlinks'),
                   h(
-                      'ul.backlinks',
-                      selectBacklinks(state).map((backlinkPage) =>
-                          h('li', [
+                      'div.backlinks',
+                      selectBacklinks(state).flatMap((backlinkPage) => [
+                          h(
+                              'h3',
                               h('a.internal', { props: { href: '/' + backlinkPage.page.id } }, backlinkPage.page.title),
-                              h(
-                                  'ul.blocks',
-                                  backlinkPage.backlinks.map((block) =>
-                                      blockView(block, undefined, state.pages, dispatch, blockRenderer),
-                                  ),
+                          ),
+                          h(
+                              'ul.blocks',
+                              backlinkPage.backlinks.map((block) =>
+                                  blockView(block, undefined, state.pages, dispatch, blockRenderer),
                               ),
-                          ]),
-                      ),
+                          ),
+                      ]),
                   ),
               ],
     );
