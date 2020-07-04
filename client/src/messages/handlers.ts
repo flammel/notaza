@@ -9,7 +9,7 @@ export function setSearch(state: AppState, search: string): AppState {
     return { ...state, search };
 }
 
-export function setUrl(state: AppState, url: string): AppState {
+export function setUrl(state: AppState, url: string): Effects<AppState> {
     const rawPageId = helpers.urlToId(url);
     const pageId = rawPageId === '' ? dateToString(new Date()) : rawPageId;
     const found = state.pages.find((page) => page.id === pageId);
@@ -24,7 +24,16 @@ export function setUrl(state: AppState, url: string): AppState {
                       children: [{ id: makeId(), content: '', children: [] }],
                   },
               ];
-    return { ...state, pages: newPages, activePage: pageId, editing: undefined };
+    return effects({
+        state: { ...state, pages: newPages, activePage: pageId, editing: undefined },
+        run: {
+            fn: (): Promise<undefined> => {
+                document.title = 'Notaza: ' + (found ? found.title : pageId);
+                return new Promise(() => undefined);
+            },
+            cb: (): undefined => undefined,
+        },
+    });
 }
 
 export function setPages(state: AppState, pages: Page[]): AppState {
