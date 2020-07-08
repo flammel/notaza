@@ -1,7 +1,7 @@
 import { Block, Page } from '../model';
 import { resizeTextarea } from '../util';
 import { Dispatch } from '../framework';
-import { splitBlock, unindentBlock, indentBlock, removeBlock, stopEditing } from '../messages/messages';
+import * as messages from '../messages/messages';
 
 class Autocomplete {
     public readonly $root: HTMLElement;
@@ -71,7 +71,7 @@ export class Editor {
                 const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
                 const contentAfter = $textarea.value.substring($textarea.selectionEnd);
                 dispatch(
-                    splitBlock({
+                    messages.splitBlock({
                         before: contentBefore,
                         after: contentAfter,
                     }),
@@ -79,22 +79,30 @@ export class Editor {
             } else if (event.key === 'Tab') {
                 event.preventDefault();
                 if (event.shiftKey) {
-                    dispatch(unindentBlock({ content: $textarea.value }));
+                    dispatch(messages.unindentBlock({ content: $textarea.value }));
                 } else {
-                    dispatch(indentBlock({ content: $textarea.value }));
+                    dispatch(messages.indentBlock({ content: $textarea.value }));
                 }
             } else if (event.key === 'Delete' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(removeBlock({}));
+                dispatch(messages.removeBlock({}));
             } else if (event.key === 's' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(stopEditing({ content: $textarea.value }));
+                dispatch(messages.stopEditing({ content: $textarea.value }));
             } else if (event.key === 'Escape') {
                 event.preventDefault();
-                dispatch(stopEditing({ content: $textarea.value }));
+                dispatch(messages.stopEditing({ content: $textarea.value }));
             } else if (event.key === 'k' && event.ctrlKey) {
                 event.preventDefault();
                 this.autoLink();
+            } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
+                event.preventDefault();
+                const start = $textarea.selectionStart;
+                const end = $textarea.selectionEnd;
+                const value = $textarea.value;
+                $textarea.value =
+                    value.substring(0, start) + '[' + value.substring(start, end) + ']' + value.substring(end);
+                $textarea.setSelectionRange(start + 1, end + 1);
             }
         });
 
