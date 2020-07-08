@@ -9,7 +9,11 @@ interface PageWithBacklinks {
 }
 
 function blockContainsLinkTo(block: Block, activePage: Page): boolean {
-    return block.content.includes('](./' + activePage.id + '.md)') || block.content.includes('#' + activePage.id);
+    return (
+        block.content.includes('](./' + activePage.id + '.md)') ||
+        block.content.includes('#' + activePage.id) ||
+        block.content.includes('[[' + activePage.title + ']]')
+    );
 }
 
 function blockBacklinks(block: Block, activePage: Page): Block | undefined {
