@@ -17,3 +17,4 @@ export const pageSaveFailed = createMessage('pageSaveFailed', props<{}>());
 export const removeNotification = createMessage('removeNotification', props<{ notification: Notification }>());
 export const moveUp = createMessage('moveUp', props<{ content: string }>());
 export const moveDown = createMessage('moveDown', props<{ content: string }>());
+export const editorInput = createMessage('editorInput', props<{ content: string }>());

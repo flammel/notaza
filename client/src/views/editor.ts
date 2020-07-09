@@ -64,7 +64,10 @@ export class Editor {
         const $textarea = document.createElement('textarea');
         $textarea.classList.add('editor');
         $textarea.value = block.content;
-        $textarea.addEventListener('input', () => resizeTextarea($textarea));
+        $textarea.addEventListener('input', () => {
+            resizeTextarea($textarea);
+            dispatch(messages.editorInput({ content: $textarea.value }));
+        });
         $textarea.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();

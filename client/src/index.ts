@@ -30,7 +30,7 @@ const app = framework.init<AppState>(initialState, [
     on(messages.pagesLoaded, (state, { pages }) => handlers.setPages(state, pages)),
     on(messages.setPageTitle, (state, { title }) => handlers.setPageTitle(api, state, title)),
     on(messages.toggleDone, (state, { blockId }) => handlers.toggleDone(api, state, blockId)),
-    on(messages.startEditing, (state, { blockId }) => handlers.startEditing(state, blockId)),
+    on(messages.startEditing, (state, { blockId }) => handlers.startEditing(api, state, blockId)),
     on(messages.stopEditing, (state, { content }) => handlers.stopEditing(api, state, content)),
     on(messages.removeBlock, (state) => handlers.removeBlock(api, state)),
     on(messages.splitBlock, (state, { before, after }) => handlers.splitBlock(api, state, before, after)),
@@ -39,6 +39,7 @@ const app = framework.init<AppState>(initialState, [
     on(messages.moveUp, (state, { content }) => handlers.moveUp(api, state, content)),
     on(messages.moveDown, (state, { content }) => handlers.moveDown(api, state, content)),
     on(messages.removeNotification, (state, { notification }) => handlers.removeNotification(state, notification)),
+    on(messages.editorInput, (state, { content }) => handlers.editorInput(state, content)),
     on(messages.pageSaved, (state) =>
         handlers.addNotification(state, {
             id: makeId(),

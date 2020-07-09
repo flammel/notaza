@@ -101,8 +101,18 @@ export function toggleDone(api: Api, state: AppState, blockId: BlockId): Effects
     );
 }
 
-export function startEditing(state: AppState, blockId: BlockId): AppState {
-    return { ...state, editing: blockId };
+export function startEditing(api: Api, state: AppState, blockId: BlockId): Effects<AppState> {
+    if (state.editing) {
+        return saveEffect(api, {
+            ...state,
+            ...helpers.setContent(state, state.editorContent),
+            editing: blockId,
+        });
+    } else {
+        return effects({
+            state: { ...state, editing: blockId },
+        });
+    }
 }
 
 export function stopEditing(api: Api, state: AppState, content: string): Effects<AppState> {
@@ -187,4 +197,10 @@ export function moveDown(api: Api, state: AppState, content: string): Effects<Ap
     } else {
         return effects({ state });
     }
+}
+
+export function editorInput(state: AppState, content: string): Effects<AppState> {
+    return effects({
+        state: { ...state, editorContent: content },
+    });
 }
