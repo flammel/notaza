@@ -18,6 +18,7 @@ import { AppState, initialState } from './model';
 import { appView } from './views/app';
 import './index.scss';
 import { makeId } from './util';
+import { AppController } from './controller/app';
 
 const pageParser = new PageParser();
 const pageSerializer = new PageSerializer();
@@ -53,7 +54,8 @@ const app = framework.init<AppState>(initialState, [
     ),
 ]);
 
-const view$ = app.state$.pipe(map((state) => appView(state, app.dispatch, blockRenderer)));
+const controller = new AppController(app.dispatch, blockRenderer);
+const view$ = app.state$.pipe(map((state) => appView(state, controller)));
 
 const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
 view$

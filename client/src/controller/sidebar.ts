@@ -1,8 +1,9 @@
 import _ from 'lodash';
 
-import { Page, Block } from '../model';
-import { createSelector } from '../framework';
+import { AppState, Page, Block } from '../model';
 import { notUndefined } from '../util';
+import { Dispatch } from '../framework';
+import * as messages from '../messages/messages';
 
 interface SearchResult {
     url: string;
@@ -75,9 +76,20 @@ function compareResults(a: SearchResult, b: SearchResult): number {
     }
 }
 
-export const selectSearchResults = createSelector((state) =>
-    state.pages
-        .map((page) => searchInPage(page, state.search))
-        .filter(notUndefined)
-        .sort(compareResults),
-);
+export class SidebarController {
+    public constructor(private readonly dispatch: Dispatch) {}
+    public getSearch(state: AppState): string {
+        return state.search;
+    }
+
+    public setSearch(search: string): void {
+        this.dispatch(messages.setSearch({ search }));
+    }
+
+    public getResults(state: AppState): SearchResult[] {
+        return state.pages
+            .map((page) => searchInPage(page, state.search))
+            .filter(notUndefined)
+            .sort(compareResults);
+    }
+}
