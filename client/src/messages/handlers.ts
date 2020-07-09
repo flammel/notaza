@@ -164,3 +164,27 @@ export function unindentBlock(api: Api, state: AppState, content: string): AppSt
         return state;
     }
 }
+
+export function moveUp(api: Api, state: AppState, content: string): Effects<AppState> {
+    const editing = state.editing;
+    if (editing) {
+        return saveEffect(api, {
+            ...state,
+            ...helpers.modifyActivePage(state, (page) => helpers.moveUp(page, editing, content)),
+        });
+    } else {
+        return effects({ state });
+    }
+}
+
+export function moveDown(api: Api, state: AppState, content: string): Effects<AppState> {
+    const editing = state.editing;
+    if (editing) {
+        return saveEffect(api, {
+            ...state,
+            ...helpers.modifyActivePage(state, (page) => helpers.moveDown(page, editing, content)),
+        });
+    } else {
+        return effects({ state });
+    }
+}

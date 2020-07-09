@@ -95,6 +95,12 @@ export class Editor {
             } else if (event.key === 'k' && event.ctrlKey) {
                 event.preventDefault();
                 this.autoLink();
+            } else if (event.key === 'ArrowUp' && event.ctrlKey) {
+                event.preventDefault();
+                dispatch(messages.moveUp({ content: $textarea.value }));
+            } else if (event.key === 'ArrowDown' && event.ctrlKey) {
+                event.preventDefault();
+                dispatch(messages.moveDown({ content: $textarea.value }));
             } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
                 event.preventDefault();
                 const start = $textarea.selectionStart;

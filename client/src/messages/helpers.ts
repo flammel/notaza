@@ -121,3 +121,49 @@ export function unindentBlock<T extends Block | Page>(block: T, blockId: BlockId
         children: newChildren,
     };
 }
+
+export function moveUp<T extends Block | Page>(block: T, blockId: BlockId, content: string): T {
+    const index = block.children.findIndex((child) => child.id === blockId);
+    if (index > 0) {
+        return {
+            ...block,
+            children: block.children.map((child, childIndex) => {
+                if (childIndex === index) {
+                    return block.children[index - 1];
+                } else if (childIndex === index - 1) {
+                    return block.children[index];
+                } else {
+                    return child;
+                }
+            }),
+        };
+    } else {
+        return {
+            ...block,
+            children: block.children.map((child) => moveUp(child, blockId, content)),
+        };
+    }
+}
+
+export function moveDown<T extends Block | Page>(block: T, blockId: BlockId, content: string): T {
+    const index = block.children.findIndex((child) => child.id === blockId);
+    if (0 <= index && index < block.children.length - 1) {
+        return {
+            ...block,
+            children: block.children.map((child, childIndex) => {
+                if (childIndex === index) {
+                    return block.children[index + 1];
+                } else if (childIndex === index + 1) {
+                    return block.children[index];
+                } else {
+                    return child;
+                }
+            }),
+        };
+    } else {
+        return {
+            ...block,
+            children: block.children.map((child) => moveDown(child, blockId, content)),
+        };
+    }
+}

@@ -36,6 +36,8 @@ const app = framework.init<AppState>(initialState, [
     on(messages.splitBlock, (state, { before, after }) => handlers.splitBlock(api, state, before, after)),
     on(messages.indentBlock, (state, { content }) => handlers.indentBlock(api, state, content)),
     on(messages.unindentBlock, (state, { content }) => handlers.unindentBlock(api, state, content)),
+    on(messages.moveUp, (state, { content }) => handlers.moveUp(api, state, content)),
+    on(messages.moveDown, (state, { content }) => handlers.moveDown(api, state, content)),
     on(messages.removeNotification, (state, { notification }) => handlers.removeNotification(state, notification)),
     on(messages.pageSaved, (state) =>
         handlers.addNotification(state, {

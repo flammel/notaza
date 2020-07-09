@@ -15,3 +15,5 @@ export const unindentBlock = createMessage('unindentBlock', props<{ content: str
 export const pageSaved = createMessage('pageSaved', props<{}>());
 export const pageSaveFailed = createMessage('pageSaveFailed', props<{}>());
 export const removeNotification = createMessage('removeNotification', props<{ notification: Notification }>());
+export const moveUp = createMessage('moveUp', props<{ content: string }>());
+export const moveDown = createMessage('moveDown', props<{ content: string }>());
