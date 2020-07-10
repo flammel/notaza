@@ -1,35 +1,32 @@
 import { VNode } from 'snabbdom/build/package/vnode';
 import { h } from 'snabbdom/build/package/h';
 
-import { Block, AppState, BlockId, Page } from '../model';
-import { BlockRenderer } from '../BlockRenderer';
-import { selectBacklinks } from '../selectors/backlinks';
-import { selectActivePage } from '../selectors/activePage';
 import { Dispatch } from '../framework';
 import { startEditing, toggleDone, setPageTitle } from '../messages/messages';
 import { Editor } from './editor';
+import { PageState, ViewBlock, RenderedBlock, EditingBlock } from '../selectors/page';
 
-function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
+function blockContentView(block: RenderedBlock, dispatch: Dispatch): VNode {
     return h('div.block__content', {
-        props: { innerHTML: blockRenderer.render(block) },
+        props: { innerHTML: block.html },
         on: {
             click: (event: Event): void => {
                 if (event.target instanceof HTMLInputElement) {
-                    dispatch(toggleDone({ blockId: block.id }));
+                    dispatch(toggleDone({ blockId: block.block.id }));
                 } else if (!(event.target instanceof HTMLAnchorElement)) {
-                    dispatch(startEditing({ blockId: block.id }));
+                    dispatch(startEditing({ blockId: block.block.id }));
                 }
             },
         },
     });
 }
 
-function blockEditorView(block: Block, pages: Page[], dispatch: Dispatch): VNode {
+function blockEditorView(block: EditingBlock, dispatch: Dispatch): VNode {
     return h('div.block__editor', {
         hook: {
             insert: (vnode): void => {
                 if (vnode.elm instanceof HTMLElement) {
-                    const editor = new Editor(block, pages, dispatch);
+                    const editor = new Editor(block.block, [], dispatch);
                     editor.appendTo(vnode.elm);
                 }
             },
@@ -37,37 +34,26 @@ function blockEditorView(block: Block, pages: Page[], dispatch: Dispatch): VNode
     });
 }
 
-function blockView(
-    block: Block,
-    editing: BlockId | undefined,
-    pages: Page[],
-    dispatch: Dispatch,
-    blockRenderer: BlockRenderer,
-): VNode {
+function blockView(block: ViewBlock, dispatch: Dispatch): VNode {
     return h('li.block', [
-        h('div.block__inner', [
-            editing === block.id
-                ? blockEditorView(block, pages, dispatch)
-                : blockContentView(block, dispatch, blockRenderer),
-        ]),
+        h('div.block__inner', [block.editing ? blockEditorView(block, dispatch) : blockContentView(block, dispatch)]),
         h(
             'ul.block__children.blocks',
-            block.children.map((child) => blockView(child, editing, pages, dispatch, blockRenderer)),
+            block.children.map((child) => blockView(child, dispatch)),
         ),
     ]);
 }
 
-export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
-    const page = selectActivePage(state);
+export function pageView(state: PageState | undefined, dispatch: Dispatch): VNode {
     return h(
         'div.page',
-        page === undefined
+        state === undefined
             ? []
             : [
                   h(
                       'h1',
                       h('input.title-editor', {
-                          props: { value: page.title },
+                          props: { value: state.title },
                           on: {
                               blur: (event: Event): void =>
                                   dispatch(setPageTitle({ title: (event.target as HTMLInputElement).value })),
@@ -76,23 +62,19 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                   ),
                   h(
                       'ul.blocks',
-                      page.children.map((block) =>
-                          blockView(block, state.editing, state.pages, dispatch, blockRenderer),
-                      ),
+                      state.children.map((block) => blockView(block, dispatch)),
                   ),
                   h('h2', 'Backlinks'),
                   h(
                       'div.backlinks',
-                      selectBacklinks(state).flatMap((backlinkPage) => [
+                      state.backlinks.flatMap((backlinkPage) => [
                           h(
                               'h3',
                               h('a.internal', { props: { href: '/' + backlinkPage.page.id } }, backlinkPage.page.title),
                           ),
                           h(
                               'ul.blocks',
-                              backlinkPage.backlinks.map((block) =>
-                                  blockView(block, undefined, state.pages, dispatch, blockRenderer),
-                              ),
+                              backlinkPage.backlinks.map((block) => blockView(block, dispatch)),
                           ),
                       ]),
                   ),

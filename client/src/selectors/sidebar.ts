@@ -75,9 +75,17 @@ function compareResults(a: SearchResult, b: SearchResult): number {
     }
 }
 
-export const selectSearchResults = createSelector((state) =>
-    state.pages
-        .map((page) => searchInPage(page, state.search))
-        .filter(notUndefined)
-        .sort(compareResults),
+export interface SidebarState {
+    query: string;
+    results: SearchResult[];
+}
+
+export const selectSidebarState = createSelector(
+    (state): SidebarState => ({
+        query: state.search,
+        results: state.pages
+            .map((page) => searchInPage(page, state.search))
+            .filter(notUndefined)
+            .sort(compareResults),
+    }),
 );

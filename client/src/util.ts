@@ -37,3 +37,11 @@ export function resizeTextarea($textarea: HTMLTextAreaElement): void {
     $textarea.style.height = 'auto';
     $textarea.style.height = $textarea.scrollHeight + 'px';
 }
+
+type TreeNode<T> = T & { children: TreeNode<T>[] };
+export function mapTree<In, Out>(tree: TreeNode<In>, fn: (node: In) => Out): TreeNode<Out> {
+    return {
+        ...fn(tree),
+        children: tree.children.map((child) => mapTree(child, fn)),
+    };
+}

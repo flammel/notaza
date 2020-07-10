@@ -139,7 +139,9 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
         return true;
     });
     md.renderer.rules.wikilink = (tokens, index): string =>
-        `<a class="internal" href="./${tokens[index].content.toLowerCase().replace(' ', '-')}">${tokens[index].content}</a>`;
+        `<a class="internal" href="./${tokens[index].content.toLowerCase().replace(' ', '-')}">${
+            tokens[index].content
+        }</a>`;
 };
 
 export class BlockRenderer {

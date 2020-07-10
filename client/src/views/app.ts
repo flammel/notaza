@@ -5,13 +5,15 @@ import { AppState } from '../model';
 import { Dispatch } from '../framework';
 import { sidebarView } from './sidebar';
 import { pageView } from './page';
-import { BlockRenderer } from '../BlockRenderer';
 import { notificationsView } from './notifications';
+import { selectSidebarState } from '../selectors/sidebar';
+import { selectPageState } from '../selectors/page';
+import { BlockRenderer } from '../BlockRenderer';
 
 export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
     return h('div.app', [
-        sidebarView(state, dispatch),
-        pageView(state, dispatch, blockRenderer),
+        sidebarView(selectSidebarState(state), dispatch),
+        pageView(selectPageState(state, blockRenderer), dispatch),
         notificationsView(state.notifications),
     ]);
 }
