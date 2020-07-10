@@ -24,7 +24,6 @@ export interface AppState {
     pages: Page[];
     activePage: PageId | undefined;
     editing: BlockId | undefined;
-    editorContent: string;
     search: string;
     notifications: Notification[];
 }
@@ -33,7 +32,6 @@ export const initialState: AppState = {
     pages: [],
     activePage: undefined,
     editing: undefined,
-    editorContent: '',
     search: '',
     notifications: [],
 };
