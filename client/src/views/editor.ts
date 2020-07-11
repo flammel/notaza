@@ -1,7 +1,6 @@
-import { Block, Page } from '../model';
+import { Block, Page } from '../store/state';
 import { resizeTextarea } from '../util';
-import { Dispatch } from '../framework';
-import * as messages from '../messages/messages';
+import { Dispatch } from '../store/store';
 
 class Autocomplete {
     public readonly $root: HTMLElement;
@@ -70,37 +69,36 @@ export class Editor {
                 event.preventDefault();
                 const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
                 const contentAfter = $textarea.value.substring($textarea.selectionEnd);
-                dispatch(
-                    messages.splitBlock({
-                        before: contentBefore,
-                        after: contentAfter,
-                    }),
-                );
+                dispatch({
+                    type: 'SplitBlockAction',
+                    before: contentBefore,
+                    after: contentAfter,
+                });
             } else if (event.key === 'Tab') {
                 event.preventDefault();
                 if (event.shiftKey) {
-                    dispatch(messages.unindentBlock({ content: $textarea.value }));
+                    dispatch({ type: 'UnindentBlockAction', content: $textarea.value });
                 } else {
-                    dispatch(messages.indentBlock({ content: $textarea.value }));
+                    dispatch({ type: 'IndentBlockAction', content: $textarea.value });
                 }
             } else if (event.key === 'Delete' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.removeBlock({}));
+                dispatch({ type: 'RemoveBlockAction' });
             } else if (event.key === 's' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.stopEditing({ content: $textarea.value }));
+                dispatch({ type: 'StopEditingAction', content: $textarea.value });
             } else if (event.key === 'Escape') {
                 event.preventDefault();
-                dispatch(messages.stopEditing({ content: $textarea.value }));
+                dispatch({ type: 'StopEditingAction', content: $textarea.value });
             } else if (event.key === 'k' && event.ctrlKey) {
                 event.preventDefault();
                 this.autoLink();
             } else if (event.key === 'ArrowUp' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.moveUp({ content: $textarea.value }));
+                dispatch({ type: 'MoveUpAction', content: $textarea.value });
             } else if (event.key === 'ArrowDown' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.moveDown({ content: $textarea.value }));
+                dispatch({ type: 'MoveDownAction', content: $textarea.value });
             } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
                 event.preventDefault();
                 const start = $textarea.selectionStart;

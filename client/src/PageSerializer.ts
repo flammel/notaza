@@ -1,4 +1,4 @@
-import { Page, Block } from './model';
+import { Page, Block } from './store/state';
 
 export class PageSerializer {
     public serialize(page: Page): string {

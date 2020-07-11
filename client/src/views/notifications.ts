@@ -1,12 +1,13 @@
 import { VNode } from 'snabbdom/build/package/vnode';
 import { h } from 'snabbdom/build/package/h';
 
-import { Notification } from '../model';
+import { AppState } from '../store/state';
+import { notificationsSelector } from '../selectors/selectors';
 
-export function notificationsView(notifications: Notification[]): VNode {
+export function notificationsView(state: AppState): VNode {
     return h(
         'div.notifications',
-        notifications.map((notification) =>
+        notificationsSelector(state).map((notification) =>
             h(
                 'div.notification',
                 {

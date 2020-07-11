@@ -1,32 +1,33 @@
 import { VNode } from 'snabbdom/build/package/vnode';
 import { h } from 'snabbdom/build/package/h';
 
-import { Dispatch } from '../framework';
-import { startEditing, toggleDone, setPageTitle } from '../messages/messages';
 import { Editor } from './editor';
-import { PageState, ViewBlock, RenderedBlock, EditingBlock } from '../selectors/page';
+import { AppState, Block, BlockId } from '../store/state';
+import * as selectors from '../selectors/selectors';
+import { Dispatch } from '../store/store';
+import { BlockRenderer } from '../BlockRenderer';
 
-function blockContentView(block: RenderedBlock, dispatch: Dispatch): VNode {
+function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
     return h('div.block__content', {
-        props: { innerHTML: block.html },
+        props: { innerHTML: blockRenderer.render(block) },
         on: {
             click: (event: Event): void => {
                 if (event.target instanceof HTMLInputElement) {
-                    dispatch(toggleDone({ blockId: block.block.id }));
+                    dispatch({ type: 'ToggleDoneAction', blockId: block.id });
                 } else if (!(event.target instanceof HTMLAnchorElement)) {
-                    dispatch(startEditing({ blockId: block.block.id }));
+                    dispatch({ type: 'StartEditingAction', blockId: block.id });
                 }
             },
         },
     });
 }
 
-function blockEditorView(block: EditingBlock, dispatch: Dispatch): VNode {
+function blockEditorView(block: Block, dispatch: Dispatch): VNode {
     return h('div.block__editor', {
         hook: {
             insert: (vnode): void => {
                 if (vnode.elm instanceof HTMLElement) {
-                    const editor = new Editor(block.block, [], dispatch);
+                    const editor = new Editor(block, [], dispatch);
                     editor.appendTo(vnode.elm);
                 }
             },
@@ -34,29 +35,42 @@ function blockEditorView(block: EditingBlock, dispatch: Dispatch): VNode {
     });
 }
 
-function blockView(block: ViewBlock, dispatch: Dispatch): VNode {
+function blockView(
+    block: Block,
+    editingId: BlockId | undefined,
+    dispatch: Dispatch,
+    blockRenderer: BlockRenderer,
+): VNode {
     return h('li.block', [
-        h('div.block__inner', [block.editing ? blockEditorView(block, dispatch) : blockContentView(block, dispatch)]),
+        h('div.block__inner', [
+            block.id === editingId
+                ? blockEditorView(block, dispatch)
+                : blockContentView(block, dispatch, blockRenderer),
+        ]),
         h(
             'ul.block__children.blocks',
-            block.children.map((child) => blockView(child, dispatch)),
+            block.children.map((child) => blockView(child, editingId, dispatch, blockRenderer)),
         ),
     ]);
 }
 
-export function pageView(state: PageState | undefined, dispatch: Dispatch): VNode {
+export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
+    const activePage = selectors.activePageSelector(state);
     return h(
         'div.page',
-        state === undefined
+        activePage === undefined
             ? []
             : [
                   h(
                       'h1',
                       h('input.title-editor', {
-                          props: { value: state.title },
+                          props: { value: activePage.page.title },
                           on: {
                               blur: (event: Event): void =>
-                                  dispatch(setPageTitle({ title: (event.target as HTMLInputElement).value })),
+                                  dispatch({
+                                      type: 'SetPageTitleAction',
+                                      title: (event.target as HTMLInputElement).value,
+                                  }),
                               keydown: (event: Event): void => {
                                   if (event instanceof KeyboardEvent && event.target instanceof HTMLInputElement) {
                                       if ((event.key === 's' && event.ctrlKey) || event.key === 'Escape') {
@@ -70,19 +84,21 @@ export function pageView(state: PageState | undefined, dispatch: Dispatch): VNod
                   ),
                   h(
                       'ul.blocks',
-                      state.children.map((block) => blockView(block, dispatch)),
+                      activePage.page.children.map((block) => blockView(block, state.editing, dispatch, blockRenderer)),
                   ),
                   h('h2', 'Backlinks'),
                   h(
                       'div.backlinks',
-                      state.backlinks.flatMap((backlinkPage) => [
+                      activePage.backlinks.flatMap((backlinkPage) => [
                           h(
                               'h3',
                               h('a.internal', { props: { href: '/' + backlinkPage.page.id } }, backlinkPage.page.title),
                           ),
                           h(
                               'ul.blocks',
-                              backlinkPage.backlinks.map((block) => blockView(block, dispatch)),
+                              backlinkPage.backlinks.map((block) =>
+                                  blockView(block, undefined, dispatch, blockRenderer),
+                              ),
                           ),
                       ]),
                   ),

@@ -1,4 +1,4 @@
-import { PageId, AppState, BlockId, Block, Page } from '../model';
+import { PageId, AppState, BlockId, Block, Page } from '../state';
 
 export function urlToId(url: string): PageId {
     if (url.startsWith('/')) {

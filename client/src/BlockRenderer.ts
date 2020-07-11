@@ -1,8 +1,7 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
-import _ from 'lodash';
-import { Block } from './model';
+import { Block } from './store/state';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -146,24 +145,27 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
 
 export class BlockRenderer {
     private readonly mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks);
-    private readonly memoized: (markdown: string) => string;
-
-    constructor() {
-        const mdIt = this.mdIt;
-        this.memoized = _.memoize((markdown: string) => {
-            if (markdown.startsWith('> ')) {
-                return `<blockquote>${mdIt.renderInline(markdown.substring(2))}</blockquote>`;
-            } else if (markdown.startsWith('[] ')) {
-                return `<input type="checkbox" />${mdIt.renderInline(markdown.substring(3))}`;
-            } else if (markdown.startsWith('[x] ')) {
-                return `<input type="checkbox" checked />${mdIt.renderInline(markdown.substring(4))}`;
-            } else {
-                return mdIt.renderInline(markdown);
-            }
-        });
-    }
+    private readonly cache = new Map<string, string>();
 
     public render(block: Block): string {
-        return this.memoized(block.content);
+        const cached = this.cache.get(block.content);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const computed = this.doRender(block.content);
+        this.cache.set(block.content, computed);
+        return computed;
+    }
+
+    private doRender(markdown: string): string {
+        if (markdown.startsWith('> ')) {
+            return `<blockquote>${this.mdIt.renderInline(markdown.substring(2))}</blockquote>`;
+        } else if (markdown.startsWith('[] ')) {
+            return `<input type="checkbox" />${this.mdIt.renderInline(markdown.substring(3))}`;
+        } else if (markdown.startsWith('[x] ')) {
+            return `<input type="checkbox" checked />${this.mdIt.renderInline(markdown.substring(4))}`;
+        } else {
+            return this.mdIt.renderInline(markdown);
+        }
     }
 }

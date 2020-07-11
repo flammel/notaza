@@ -1,5 +1,4 @@
-import _ from 'lodash';
-import { Page, PageId, Block } from './model';
+import { Page, PageId, Block } from './store/state';
 import { makeId } from './util';
 
 export class PageParser {
@@ -89,14 +88,20 @@ export class PageParser {
     }
 
     private sanitizeMarkdown(markdown: string): string {
-        const lines = markdown.split('\n');
-        const withoutLeadingNonList = _.dropWhile(lines, (line) => !line.startsWith('* '));
-        const withoutBacklinks = _.takeWhile(
-            withoutLeadingNonList,
-            (line) => line !== '<!-- notaza backlinks start -->',
-        );
-        const withoutTrailingEmpty = _.dropRightWhile(withoutBacklinks, (line) => line.trim() === '');
-        return withoutTrailingEmpty.join('\n');
+        const lines = [];
+        let foundFirstBlock = false;
+        for (const line of markdown.split('\n')) {
+            if (line.startsWith('* ')) {
+                foundFirstBlock = true;
+            }
+            if (foundFirstBlock) {
+                if (line === '<!-- notaza backlinks start -->') {
+                    break;
+                }
+                lines.push(line);
+            }
+        }
+        return lines.join('\n').trim();
     }
 
     private splitRawMarkdown(rawMarkdown: string): [string, string] {

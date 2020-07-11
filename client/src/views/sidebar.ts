@@ -1,19 +1,19 @@
 import { VNode } from 'snabbdom/build/package/vnode';
 import { h } from 'snabbdom/build/package/h';
 
-import { Dispatch } from '../framework';
-import { setSearch } from '../messages/messages';
-import { SidebarState } from '../selectors/sidebar';
+import { AppState } from '../store/state';
+import * as selectors from '../selectors/selectors';
+import { Dispatch } from '../store/store';
 
-export function sidebarView(state: SidebarState, dispatch: Dispatch): VNode {
+export function sidebarView(state: AppState, dispatch: Dispatch): VNode {
     return h('div.sidebar', [
         h('form.sidebar__header', [
             h('a.internal', { props: { href: '/' } }, 'Today'),
             h('input', {
-                props: { placeholder: 'Search', value: state.query },
+                props: { placeholder: 'Search', value: selectors.querySelector(state) },
                 on: {
                     input: (event: Event): void =>
-                        dispatch(setSearch({ search: (event.target as HTMLInputElement).value })),
+                        dispatch({ type: 'SetSearchAction', search: (event.target as HTMLInputElement).value }),
                     keydown: (event: Event): void => {
                         if (event instanceof KeyboardEvent && event.key === 'Enter') {
                             event.preventDefault();
@@ -24,7 +24,7 @@ export function sidebarView(state: SidebarState, dispatch: Dispatch): VNode {
         ]),
         h(
             'ul.sidebar__list',
-            state.results.map((result) =>
+            selectors.searchResultSelector(state).map((result) =>
                 h('li.search-result', [
                     h('a.internal', {
                         props: { href: '/' + result.url, innerHTML: result.title },

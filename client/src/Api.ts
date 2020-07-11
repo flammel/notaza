@@ -1,6 +1,6 @@
 import { PageParser } from './PageParser';
 import { PageSerializer } from './PageSerializer';
-import { Page } from './model';
+import { Page } from './store/state';
 
 interface ApiPage {
     id: string;

@@ -1,31 +1,14 @@
-import { notUndefined, mapTree, makeId } from '../util';
-import { Page, Block, BlockId, AppState } from '../model';
-import { BlockRenderer } from '../BlockRenderer';
+import { notUndefined } from '../util';
+import { Page, Block, AppState } from '../store/state';
 
-export type ViewBlock = EditingBlock | RenderedBlock;
-
-export interface EditingBlock {
-    editing: true;
-    block: Block;
-    children: ViewBlock[];
-}
-
-export interface RenderedBlock {
-    editing: false;
-    html: string;
-    block: Block;
-    children: ViewBlock[];
-}
-
-export interface PageState {
-    title: string;
-    children: ViewBlock[];
+interface ActivePage {
+    page: Page;
     backlinks: PageWithBacklinks[];
 }
 
 interface PageWithBacklinks {
     page: Page;
-    backlinks: RenderedBlock[];
+    backlinks: Block[];
 }
 
 function blockContainsLinkTo(block: Block, activePage: Page): boolean {
@@ -49,28 +32,9 @@ function blockBacklinks(block: Block, activePage: Page): Block | undefined {
     }
 }
 
-function viewBlock(block: Block, editing: BlockId | undefined, blockRenderer: BlockRenderer): ViewBlock {
-    return mapTree(block, (node) => ({
-        editing: node.id === editing,
-        block: node,
-        html: blockRenderer.render(node),
-    }));
-}
-
-function renderedBlock(block: Block, blockRenderer: BlockRenderer): RenderedBlock {
-    return mapTree(block, (node) => ({
-        editing: false,
-        block: node,
-        html: blockRenderer.render(node),
-    }));
-}
-
-function pageBacklinks(page: Page, activePage: Page, blockRenderer: BlockRenderer): PageWithBacklinks | undefined {
+function pageBacklinks(page: Page, activePage: Page): PageWithBacklinks | undefined {
     if (page.id !== activePage.id) {
-        const backlinks: RenderedBlock[] = page.children
-            .map((block) => blockBacklinks(block, activePage))
-            .filter(notUndefined)
-            .map((block) => renderedBlock(block, blockRenderer));
+        const backlinks: Block[] = page.children.map((block) => blockBacklinks(block, activePage)).filter(notUndefined);
         if (backlinks.length > 0) {
             return {
                 page,
@@ -80,26 +44,12 @@ function pageBacklinks(page: Page, activePage: Page, blockRenderer: BlockRendere
     }
 }
 
-export function selectPageState(state: AppState, blockRenderer: BlockRenderer): PageState | undefined {
+export function getActivePage(state: AppState): ActivePage | undefined {
     const found = state.pages.find((page) => page.id === state.activePage);
     if (found !== undefined) {
-        const children = found.children.map((child) => viewBlock(child, state.editing, blockRenderer));
-        if (children.length < 1) {
-            children.push({
-                block: {
-                    id: makeId(),
-                    children: [],
-                    content: '',
-                },
-                children: [],
-                editing: false,
-                html: '',
-            });
-        }
         return {
-            title: found.title,
-            backlinks: state.pages.map((page) => pageBacklinks(page, found, blockRenderer)).filter(notUndefined),
-            children,
+            page: found,
+            backlinks: state.pages.map((page) => pageBacklinks(page, found)).filter(notUndefined),
         };
     }
     return undefined;

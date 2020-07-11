@@ -45,3 +45,7 @@ export function mapTree<In, Out>(tree: TreeNode<In>, fn: (node: In) => Out): Tre
         children: tree.children.map((child) => mapTree(child, fn)),
     };
 }
+
+export function assertNever(x: never): never {
+    throw new Error('Unexpected object: ' + x);
+}

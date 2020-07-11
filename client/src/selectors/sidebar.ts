@@ -1,7 +1,4 @@
-import _ from 'lodash';
-
-import { Page, Block } from '../model';
-import { createSelector } from '../framework';
+import { Page, Block } from '../store/state';
 import { notUndefined } from '../util';
 
 interface SearchResult {
@@ -17,7 +14,6 @@ function flatBlocksRec(block: Block): Block[] {
 function flatBlocks(page: Page): Block[] {
     return page.children.flatMap(flatBlocksRec);
 }
-const flatBlocksMem = _.memoize(flatBlocks);
 
 function highlight(text: string, query: string): string {
     if (query.length === 0) {
@@ -37,7 +33,7 @@ function highlight(text: string, query: string): string {
 }
 
 function searchInPage(page: Page, query: string): SearchResult | undefined {
-    const matchingBlocks: Block[] = flatBlocksMem(page).filter(
+    const matchingBlocks: Block[] = flatBlocks(page).filter(
         (block) => query !== '' && block.content.toLowerCase().includes(query.toLowerCase()),
     );
 
@@ -75,17 +71,9 @@ function compareResults(a: SearchResult, b: SearchResult): number {
     }
 }
 
-export interface SidebarState {
-    query: string;
-    results: SearchResult[];
+export function getSearchResults(pages: Page[], query: string): SearchResult[] {
+    return pages
+        .map((page) => searchInPage(page, query))
+        .filter(notUndefined)
+        .sort(compareResults);
 }
-
-export const selectSidebarState = createSelector(
-    (state): SidebarState => ({
-        query: state.search,
-        results: state.pages
-            .map((page) => searchInPage(page, state.search))
-            .filter(notUndefined)
-            .sort(compareResults),
-    }),
-);
