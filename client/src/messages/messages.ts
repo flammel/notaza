@@ -1,4 +1,4 @@
-import { Page, BlockId, Notification } from '../model';
+import { Page, BlockId, Notification, Block } from '../model';
 import { createMessage, props } from '../framework';
 
 export const setSearch = createMessage('setSearch', props<{ search: string }>());
@@ -17,3 +17,4 @@ export const pageSaveFailed = createMessage('pageSaveFailed', props<{}>());
 export const removeNotification = createMessage('removeNotification', props<{ notification: Notification }>());
 export const moveUp = createMessage('moveUp', props<{ content: string }>());
 export const moveDown = createMessage('moveDown', props<{ content: string }>());
+export const inbox = createMessage('inbox', props<{ block: Block }>());

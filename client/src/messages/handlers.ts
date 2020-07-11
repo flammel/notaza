@@ -1,4 +1,4 @@
-import { AppState, Page, BlockId, Notification } from '../model';
+import { AppState, Page, BlockId, Notification, Block } from '../model';
 import { makeId, dateToString } from '../util';
 import * as helpers from './helpers';
 import * as messages from './messages';
@@ -187,4 +187,11 @@ export function moveDown(api: Api, state: AppState, content: string): Effects<Ap
     } else {
         return effects({ state });
     }
+}
+
+export function inbox(api: Api, state: AppState, block: Block): Effects<AppState> {
+    return saveEffect(api, {
+        ...state,
+        ...helpers.modifyActivePage(state, (page) => ({ ...page, children: [block, ...page.children] })),
+    });
 }

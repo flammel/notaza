@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { Page, PageId, Block } from './model';
+import { makeId } from './util';
 
 export class PageParser {
     public parse(id: PageId, rawMarkdown: string): Page {
@@ -18,7 +19,7 @@ export class PageParser {
                 title: id,
                 children: [
                     {
-                        id: _.uniqueId(),
+                        id: makeId(),
                         content: 'Page could not be parsed: ' + (e instanceof Error ? e.message : ''),
                         children: [],
                     },
@@ -57,7 +58,7 @@ export class PageParser {
         }
 
         const rootBlock: Block & { indentation: number } = {
-            id: _.uniqueId(),
+            id: makeId(),
             content: '',
             children: [],
             indentation: -1,
@@ -65,7 +66,7 @@ export class PageParser {
         const stack: Array<Block & { indentation: number }> = [rootBlock];
         for (const group of groups) {
             const peek = stack[stack.length - 1];
-            const block = { id: _.uniqueId(), content: group[1].join('\n'), children: [], indentation: group[0] };
+            const block = { id: makeId(), content: group[1].join('\n'), children: [], indentation: group[0] };
             if (block.indentation > peek.indentation) {
                 peek.children.push(block);
                 stack.push(block);

@@ -1,4 +1,4 @@
-import { notUndefined, mapTree } from '../util';
+import { notUndefined, mapTree, makeId } from '../util';
 import { Page, Block, BlockId, AppState } from '../model';
 import { BlockRenderer } from '../BlockRenderer';
 
@@ -83,10 +83,23 @@ function pageBacklinks(page: Page, activePage: Page, blockRenderer: BlockRendere
 export function selectPageState(state: AppState, blockRenderer: BlockRenderer): PageState | undefined {
     const found = state.pages.find((page) => page.id === state.activePage);
     if (found !== undefined) {
+        const children = found.children.map((child) => viewBlock(child, state.editing, blockRenderer));
+        if (children.length < 1) {
+            children.push({
+                block: {
+                    id: makeId(),
+                    children: [],
+                    content: '',
+                },
+                children: [],
+                editing: false,
+                html: '',
+            });
+        }
         return {
             title: found.title,
             backlinks: state.pages.map((page) => pageBacklinks(page, found, blockRenderer)).filter(notUndefined),
-            children: found.children.map((child) => viewBlock(child, state.editing, blockRenderer)),
+            children,
         };
     }
     return undefined;

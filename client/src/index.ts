@@ -14,7 +14,7 @@ import { Api } from './Api';
 import { PageParser } from './PageParser';
 import { BlockRenderer } from './BlockRenderer';
 import { PageSerializer } from './PageSerializer';
-import { AppState, initialState } from './model';
+import { AppState, initialState, Block } from './model';
 import { appView } from './views/app';
 import './index.scss';
 import { makeId } from './util';
@@ -39,6 +39,7 @@ const app = framework.init<AppState>(initialState, [
     on(messages.moveUp, (state, { content }) => handlers.moveUp(api, state, content)),
     on(messages.moveDown, (state, { content }) => handlers.moveDown(api, state, content)),
     on(messages.removeNotification, (state, { notification }) => handlers.removeNotification(state, notification)),
+    on(messages.inbox, (state, { block }) => handlers.inbox(api, state, block)),
     on(messages.pageSaved, (state) =>
         handlers.addNotification(state, {
             id: makeId(),
@@ -67,9 +68,44 @@ view$
     )
     .subscribe();
 
+function hasOwnProperty<X extends {}, Y extends PropertyKey>(obj: X, prop: Y): obj is X & Record<Y, unknown> {
+    return obj.hasOwnProperty(prop);
+}
+
+function parseInboxBlock(input: unknown): Block | undefined {
+    if (input instanceof Object) {
+        if (hasOwnProperty(input, 'content') && typeof input.content === 'string') {
+            const children = [];
+            if (hasOwnProperty(input, 'children') && Array.isArray(input.children)) {
+                for (const child of input.children) {
+                    const parsed = parseInboxBlock(child);
+                    if (parsed === undefined) {
+                        return undefined;
+                    } else {
+                        children.push(parsed);
+                    }
+                }
+            }
+            return {
+                id: makeId(),
+                content: input.content,
+                children,
+            };
+        }
+    }
+}
+
 api.loadPages().then((pages) => {
     app.dispatch(messages.pagesLoaded({ pages }));
     app.dispatch(messages.setUrl({ url: window.location.pathname }));
+    if (window.location.hash.startsWith('#inbox:')) {
+        const decoded = JSON.parse(atob(window.location.hash.substring('#inbox:'.length)));
+        const parsed = parseInboxBlock(decoded);
+        if (parsed !== undefined) {
+            app.dispatch(messages.inbox({ block: parsed }));
+            window.location.hash = '';
+        }
+    }
 });
 
 document.addEventListener('click', (event) => {
