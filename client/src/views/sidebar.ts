@@ -12,7 +12,13 @@ export function sidebarView(state: SidebarState, dispatch: Dispatch): VNode {
             h('input', {
                 props: { placeholder: 'Search', value: state.query },
                 on: {
-                    input: (event): void => dispatch(setSearch({ search: (event.target as HTMLInputElement).value })),
+                    input: (event: Event): void =>
+                        dispatch(setSearch({ search: (event.target as HTMLInputElement).value })),
+                    keydown: (event: Event): void => {
+                        if (event instanceof KeyboardEvent && event.key === 'Enter') {
+                            event.preventDefault();
+                        }
+                    },
                 },
             }),
         ]),
