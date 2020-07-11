@@ -167,9 +167,9 @@ a.current {
     box-sizing: border-box;
     resize: none;
     border: 0;
-    background: yellow;
+    background: #efefef;
     overflow: hidden;
-    padding: 0;
+    padding: 3px;
 
     &:focus {
         outline: none;
@@ -305,9 +305,10 @@ a.current {
 
 .block {
     position: relative;
-    margin: 3px 0;
+    margin: 0;
 
     &__content {
+        padding: 3px;
         &:empty::before {
             content: '\200B';
         }

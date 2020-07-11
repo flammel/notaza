@@ -58,7 +58,7 @@ class Autocomplete {
 
 export class Editor {
     private readonly $textarea: HTMLTextAreaElement;
-    private readonly autocomplete: Autocomplete;
+    // private readonly autocomplete: Autocomplete;
 
     public constructor(block: Block, pages: Page[], dispatch: Dispatch) {
         const $textarea = document.createElement('textarea');
@@ -113,12 +113,12 @@ export class Editor {
         });
 
         this.$textarea = $textarea;
-        this.autocomplete = new Autocomplete(pages, $textarea);
+        // this.autocomplete = new Autocomplete(pages, $textarea);
     }
 
     public appendTo($parent: HTMLElement): void {
         $parent.appendChild(this.$textarea);
-        $parent.appendChild(this.autocomplete.$root);
+        // $parent.appendChild(this.autocomplete.$root);
 
         resizeTextarea(this.$textarea);
         this.$textarea.focus();
