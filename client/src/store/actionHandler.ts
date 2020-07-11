@@ -40,6 +40,10 @@ export function actionHandler(state: AppState, action: AppAction): Effects {
             return handlers.moveDown(state, action.content);
         case 'InboxAction':
             return handlers.inbox(state, action.block);
+        case 'UploadFileStartAction':
+            return handlers.uploadFileStart(state, action.file);
+        case 'UploadFileFinishAction':
+            return handlers.uploadFileFinish(state, action.filename);
         default:
             assertNever(action);
     }

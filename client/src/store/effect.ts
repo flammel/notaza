@@ -14,4 +14,8 @@ export interface DocumentTitleEffect {
     type: 'DocumentTitleEffect';
     title: string;
 }
-export type AppEffect = DelayedDispatchEffect | SavePageEffect | DocumentTitleEffect;
+export interface UploadFileEffect {
+    type: 'UploadFileEffect';
+    file: File;
+}
+export type AppEffect = DelayedDispatchEffect | SavePageEffect | DocumentTitleEffect | UploadFileEffect;

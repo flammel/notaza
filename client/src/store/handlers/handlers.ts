@@ -2,7 +2,19 @@ import { AppState, Page, BlockId, Notification, Block } from '../state';
 import { makeId, dateToString } from '../../util';
 import * as helpers from './helpers';
 import { Effects } from '../store';
-import { SavePageEffect } from '../effect';
+
+//
+// helpers
+//
+
+function saveEffect(state: AppState): Effects {
+    const page = state.pages.find((page) => page.id === state.activePage);
+    return page === undefined ? [state] : [state, { type: 'SavePageEffect', page }];
+}
+
+//
+// misc
+//
 
 export function setSearch(state: AppState, search: string): Effects {
     return [{ ...state, search }];
@@ -68,17 +80,50 @@ export function setUrl(state: AppState, url: string): Effects {
     ];
 }
 
+export function uploadFileStart(state: AppState, file: File): Effects {
+    return [state, { type: 'UploadFileEffect', file }];
+}
+
+export function uploadFileFinish(state: AppState, filename: string): Effects {
+    return inbox(state, { content: `![${filename}](./${filename})`, children: [], id: makeId() });
+}
+
+//
+// inbox
+//
+
+export function inbox(state: AppState, block: Block): Effects {
+    return saveEffect({
+        ...state,
+        ...helpers.modifyActivePage(state, (page) => ({ ...page, children: [block, ...page.children] })),
+    });
+}
+
+// page editing operations
+
 export function setPageTitle(state: AppState, title: string): Effects {
-    return [
-        {
-            ...state,
-            pages: state.pages.map((page) => (page.id === state.activePage ? { ...page, title } : page)),
-        },
-    ];
+    return saveEffect({
+        ...state,
+        pages: state.pages.map((page) => (page.id === state.activePage ? { ...page, title } : page)),
+    });
+}
+
+// block editing operations
+
+export function startEditing(state: AppState, blockId: BlockId): Effects {
+    return [{ ...state, editing: blockId }];
+}
+
+export function stopEditing(state: AppState, content: string): Effects {
+    return saveEffect({
+        ...state,
+        ...helpers.setContent(state, content),
+        editing: undefined,
+    });
 }
 
 export function toggleDone(state: AppState, blockId: BlockId): Effects {
-    return [
+    return saveEffect(
         helpers.modifyBlockInActivePage(state, blockId, (oldBlock) => {
             if (oldBlock.content.startsWith('[] ')) {
                 return { ...oldBlock, content: '[x] ' + oldBlock.content.substring(3) };
@@ -88,33 +133,17 @@ export function toggleDone(state: AppState, blockId: BlockId): Effects {
             }
             return oldBlock;
         }),
-    ];
-}
-
-export function startEditing(state: AppState, blockId: BlockId): Effects {
-    return [{ ...state, editing: blockId }];
-}
-
-export function stopEditing(state: AppState, content: string): Effects {
-    return [
-        {
-            ...state,
-            ...helpers.setContent(state, content),
-            editing: undefined,
-        },
-    ];
+    );
 }
 
 export function removeBlock(state: AppState): Effects {
     const editing = state.editing;
     if (editing) {
-        return [
-            {
-                ...state,
-                ...helpers.modifyActivePage(state, (page) => helpers.removeBlock(page, editing)),
-                editing: undefined,
-            },
-        ];
+        return saveEffect({
+            ...state,
+            ...helpers.modifyActivePage(state, (page) => helpers.removeBlock(page, editing)),
+            editing: undefined,
+        });
     } else {
         return [state];
     }
@@ -125,21 +154,19 @@ export function splitBlock(state: AppState, before: string, after: string): Effe
     if (editing) {
         const newContent = (before.startsWith('[] ') || before.startsWith('[x] ')) && after === '' ? '[] ' : after;
         const newBlock = { id: makeId(), content: newContent, children: [] };
-        return [
-            {
-                ...state,
-                ...helpers.modifyActivePage(state, (page) => helpers.splitBlock(page, editing, before, newBlock)),
-                editing: newBlock.id,
-            },
-        ];
+        return saveEffect({
+            ...state,
+            ...helpers.modifyActivePage(state, (page) => helpers.splitBlock(page, editing, before, newBlock)),
+            editing: newBlock.id,
+        });
     } else {
         return [state];
     }
 }
 
-function saveEffect(page: Page | undefined): [] | [SavePageEffect] {
-    return page === undefined ? [] : [{ type: 'SavePageEffect', page }];
-}
+//
+// moving operations
+//
 
 function moveBlock(
     state: AppState,
@@ -148,12 +175,10 @@ function moveBlock(
 ): Effects {
     const editing = state.editing;
     if (editing) {
-        const newState = {
+        return saveEffect({
             ...state,
             ...helpers.modifyActivePage(state, (page) => mover(page, editing, content)),
-        };
-        const page = newState.pages.find((page) => page.id === state.activePage);
-        return [newState, ...saveEffect(page)];
+        });
     } else {
         return [state];
     }
@@ -173,13 +198,4 @@ export function moveUp(state: AppState, content: string): Effects {
 
 export function moveDown(state: AppState, content: string): Effects {
     return moveBlock(state, content, helpers.moveDown);
-}
-
-export function inbox(state: AppState, block: Block): Effects {
-    return [
-        {
-            ...state,
-            ...helpers.modifyActivePage(state, (page) => ({ ...page, children: [block, ...page.children] })),
-        },
-    ];
 }

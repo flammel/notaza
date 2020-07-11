@@ -1,6 +1,11 @@
 import { Block, Page } from '../store/state';
-import { resizeTextarea } from '../util';
 import { Dispatch } from '../store/store';
+
+function resizeTextarea($textarea: HTMLTextAreaElement): void {
+    $textarea.setAttribute('rows', '1');
+    $textarea.style.height = 'auto';
+    $textarea.style.height = $textarea.scrollHeight + 'px';
+}
 
 class Autocomplete {
     public readonly $root: HTMLElement;
@@ -101,17 +106,27 @@ export class Editor {
                 dispatch({ type: 'MoveDownAction', content: $textarea.value });
             } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
                 event.preventDefault();
-                const start = $textarea.selectionStart;
-                const end = $textarea.selectionEnd;
-                const value = $textarea.value;
-                $textarea.value =
-                    value.substring(0, start) + '[' + value.substring(start, end) + ']' + value.substring(end);
-                $textarea.setSelectionRange(start + 1, end + 1);
+                this.wrap('[', ']');
+            } else if (event.key === '*' && $textarea.selectionStart !== $textarea.selectionEnd) {
+                event.preventDefault();
+                this.wrap('*', '*');
+            } else if (event.key === '_' && $textarea.selectionStart !== $textarea.selectionEnd) {
+                event.preventDefault();
+                this.wrap('_', '_');
             }
         });
 
         this.$textarea = $textarea;
         // this.autocomplete = new Autocomplete(pages, $textarea);
+    }
+
+    private wrap(before: string, after: string): void {
+        const start = this.$textarea.selectionStart;
+        const end = this.$textarea.selectionEnd;
+        const value = this.$textarea.value;
+        this.$textarea.value =
+            value.substring(0, start) + before + value.substring(start, end) + after + value.substring(end);
+        this.$textarea.setSelectionRange(start + 1, end + 1);
     }
 
     public appendTo($parent: HTMLElement): void {

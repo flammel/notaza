@@ -66,6 +66,14 @@ export interface Inbox {
     type: 'InboxAction';
     block: Block;
 }
+export interface UploadFileStart {
+    type: 'UploadFileStartAction';
+    file: File;
+}
+export interface UploadFileFinish {
+    type: 'UploadFileFinishAction';
+    filename: string;
+}
 
 export type AppAction =
     | SetSearch
@@ -84,4 +92,11 @@ export type AppAction =
     | RemoveNotification
     | MoveUp
     | MoveDown
-    | Inbox;
+    | Inbox
+    | UploadFileStart
+    | UploadFileFinish;
+
+export const actions = {
+    upload: (file: File): UploadFileStart => ({ type: 'UploadFileStartAction', file }),
+    uploadFinished: (filename: string): UploadFileFinish => ({ type: 'UploadFileFinishAction', filename }),
+};

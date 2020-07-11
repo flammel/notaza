@@ -6,6 +6,7 @@ import { AppState, Block, BlockId } from '../store/state';
 import * as selectors from '../selectors/selectors';
 import { Dispatch } from '../store/store';
 import { BlockRenderer } from '../BlockRenderer';
+import { actions } from '../store/action';
 
 function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
     return h('div.block__content', {
@@ -101,6 +102,30 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                               ),
                           ),
                       ]),
+                  ),
+                  h(
+                      'form',
+                      {
+                          on: {
+                              submit: (event: Event): void => {
+                                  event.preventDefault();
+                                  const form = event.target;
+                                  if (form instanceof HTMLFormElement) {
+                                      const input = form.querySelector('[type=file]');
+                                      if (input instanceof HTMLInputElement) {
+                                          const file = input.files?.item(0);
+                                          if (file instanceof File) {
+                                              dispatch(actions.upload(file));
+                                          }
+                                      }
+                                  }
+                              },
+                          },
+                      },
+                      [
+                          h('input', { props: { type: 'file', required: true } }),
+                          h('button', { props: { type: 'submit' } }, 'Upload'),
+                      ],
                   ),
               ],
     );

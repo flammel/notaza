@@ -61,7 +61,7 @@ const upload = multer({
         },
     }),
     fileFilter: (req, file, cb) => {
-        const allowed = ['image/png', 'image/jpeg', 'application/pdf'];
+        const allowed = ['image/png', 'image/jpeg', , 'image/gif', 'application/pdf'];
         if (allowed.indexOf(file.mimetype) >= 0) {
             cb(null, true);
         } else {
@@ -73,6 +73,7 @@ const upload = multer({
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+app.use('/static/', express.static(path.resolve(config.contentDir)));
 app.get('/api/pages', async (req, res) => {
     try {
         const pages = await getPages();
