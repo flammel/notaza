@@ -57,6 +57,14 @@ export function pageView(state: PageState | undefined, dispatch: Dispatch): VNod
                           on: {
                               blur: (event: Event): void =>
                                   dispatch(setPageTitle({ title: (event.target as HTMLInputElement).value })),
+                              keydown: (event: Event): void => {
+                                  if (event instanceof KeyboardEvent && event.target instanceof HTMLInputElement) {
+                                      if ((event.key === 's' && event.ctrlKey) || event.key === 'Escape') {
+                                          event.preventDefault();
+                                          event.target.blur();
+                                      }
+                                  }
+                              },
                           },
                       }),
                   ),
