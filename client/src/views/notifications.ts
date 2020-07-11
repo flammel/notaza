@@ -1,22 +1,21 @@
-import { VNode } from 'snabbdom/build/package/vnode';
-import { h } from 'snabbdom/build/package/h';
+import { AppState } from '../model';
 
-import { Notification } from '../model';
+export class NotificationsView {
+    private readonly $root: HTMLDivElement;
 
-export function notificationsView(notifications: Notification[]): VNode {
-    return h(
-        'div.notifications',
-        notifications.map((notification) =>
-            h(
-                'div.notification',
-                {
-                    class: {
-                        'notification--error': notification.type === 'error',
-                        'notification--success': notification.type === 'success',
-                    },
-                },
-                notification.content,
-            ),
-        ),
-    );
+    public constructor($parent: HTMLElement) {
+        this.$root = document.createElement('div');
+        this.$root.classList.add('notifications');
+
+        $parent.appendChild(this.$root);
+    }
+
+    public update(state: AppState): void {
+        this.$root.innerHTML = state.notifications
+            .map(
+                (notification) =>
+                    `<div class="notification notification--${notification.type}">${notification.content}</div>`,
+            )
+            .join('');
+    }
 }

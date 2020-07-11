@@ -11,6 +11,10 @@ import { hasOwnProperty } from './util';
 type TransformFn<ResultT> = (state: AppState) => ResultT;
 type Selector<ResultT> = (state: AppState) => ResultT;
 
+export interface MessageBus {
+    dispatch: Dispatch;
+}
+
 export function createSelector<ResultT>(transformFn: TransformFn<ResultT>): Selector<ResultT> {
     return _.memoize(transformFn);
 }

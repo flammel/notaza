@@ -1,6 +1,6 @@
 import { Block, Page } from '../model';
 import { resizeTextarea } from '../util';
-import { Dispatch } from '../framework';
+import { MessageBus } from '../framework';
 import * as messages from '../messages/messages';
 
 class Autocomplete {
@@ -60,17 +60,18 @@ export class Editor {
     private readonly $textarea: HTMLTextAreaElement;
     private readonly autocomplete: Autocomplete;
 
-    public constructor(block: Block, pages: Page[], dispatch: Dispatch) {
+    private block: Block | undefined;
+
+    public constructor(mbus: MessageBus) {
         const $textarea = document.createElement('textarea');
         $textarea.classList.add('editor');
-        $textarea.value = block.content;
         $textarea.addEventListener('input', () => resizeTextarea($textarea));
         $textarea.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
                 const contentAfter = $textarea.value.substring($textarea.selectionEnd);
-                dispatch(
+                mbus.dispatch(
                     messages.splitBlock({
                         before: contentBefore,
                         after: contentAfter,
@@ -79,28 +80,28 @@ export class Editor {
             } else if (event.key === 'Tab') {
                 event.preventDefault();
                 if (event.shiftKey) {
-                    dispatch(messages.unindentBlock({ content: $textarea.value }));
+                    mbus.dispatch(messages.unindentBlock({ content: $textarea.value }));
                 } else {
-                    dispatch(messages.indentBlock({ content: $textarea.value }));
+                    mbus.dispatch(messages.indentBlock({ content: $textarea.value }));
                 }
             } else if (event.key === 'Delete' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.removeBlock({}));
+                mbus.dispatch(messages.removeBlock({}));
             } else if (event.key === 's' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.stopEditing({ content: $textarea.value }));
+                mbus.dispatch(messages.stopEditing({ content: $textarea.value }));
             } else if (event.key === 'Escape') {
                 event.preventDefault();
-                dispatch(messages.stopEditing({ content: $textarea.value }));
+                mbus.dispatch(messages.stopEditing({ content: $textarea.value }));
             } else if (event.key === 'k' && event.ctrlKey) {
                 event.preventDefault();
                 this.autoLink();
             } else if (event.key === 'ArrowUp' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.moveUp({ content: $textarea.value }));
+                mbus.dispatch(messages.moveUp({ content: $textarea.value }));
             } else if (event.key === 'ArrowDown' && event.ctrlKey) {
                 event.preventDefault();
-                dispatch(messages.moveDown({ content: $textarea.value }));
+                mbus.dispatch(messages.moveDown({ content: $textarea.value }));
             } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
                 event.preventDefault();
                 const start = $textarea.selectionStart;
@@ -113,13 +114,17 @@ export class Editor {
         });
 
         this.$textarea = $textarea;
-        this.autocomplete = new Autocomplete(pages, $textarea);
+        this.autocomplete = new Autocomplete([], $textarea);
     }
 
-    public appendTo($parent: HTMLElement): void {
+    public appendTo($parent: HTMLElement, block: Block): void {
+        this.block = block;
+        this.$textarea.value = block.content;
         $parent.appendChild(this.$textarea);
         $parent.appendChild(this.autocomplete.$root);
+    }
 
+    public onMount(): void {
         resizeTextarea(this.$textarea);
         this.$textarea.focus();
         this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);

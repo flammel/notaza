@@ -23,7 +23,7 @@ export interface PageState {
     backlinks: PageWithBacklinks[];
 }
 
-interface PageWithBacklinks {
+export interface PageWithBacklinks {
     page: Page;
     backlinks: RenderedBlock[];
 }

@@ -1,19 +1,28 @@
-import { VNode } from 'snabbdom/build/package/vnode';
-import { h } from 'snabbdom/build/package/h';
-
 import { AppState } from '../model';
-import { Dispatch } from '../framework';
-import { sidebarView } from './sidebar';
-import { pageView } from './page';
-import { notificationsView } from './notifications';
-import { selectSidebarState } from '../selectors/sidebar';
-import { selectPageState } from '../selectors/page';
+import { SidebarView } from './sidebar';
+import { PageView } from './page';
+import { NotificationsView } from './notifications';
+import { MessageBus } from '../framework';
 import { BlockRenderer } from '../BlockRenderer';
 
-export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
-    return h('div.app', [
-        sidebarView(selectSidebarState(state), dispatch),
-        pageView(selectPageState(state, blockRenderer), dispatch),
-        notificationsView(state.notifications),
-    ]);
+export class AppView {
+    private readonly sidebar: SidebarView;
+    private readonly page: PageView;
+    private readonly notifications: NotificationsView;
+
+    public constructor($parent: HTMLElement, mbus: MessageBus, blockRenderer: BlockRenderer) {
+        const $root = document.createElement('div');
+        $root.classList.add('app');
+        $parent.appendChild($root);
+
+        this.sidebar = new SidebarView($root, mbus);
+        this.page = new PageView($root, mbus, blockRenderer);
+        this.notifications = new NotificationsView($root);
+    }
+
+    public update(state: AppState): void {
+        this.sidebar.update(state);
+        this.page.update(state);
+        this.notifications.update(state);
+    }
 }

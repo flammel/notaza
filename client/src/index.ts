@@ -1,11 +1,3 @@
-import { map, scan } from 'rxjs/operators';
-import { init } from 'snabbdom/build/package/init';
-import { VNode } from 'snabbdom/build/package/vnode';
-import { attributesModule } from 'snabbdom/build/package/modules/attributes';
-import { propsModule } from 'snabbdom/build/package/modules/props';
-import { eventListenersModule } from 'snabbdom/build/package/modules/eventlisteners';
-import { classModule } from 'snabbdom/build/package/modules/class';
-
 import * as framework from './framework';
 import * as messages from './messages/messages';
 import * as handlers from './messages/handlers';
@@ -15,7 +7,7 @@ import { PageParser } from './PageParser';
 import { BlockRenderer } from './BlockRenderer';
 import { PageSerializer } from './PageSerializer';
 import { AppState, initialState } from './model';
-import { appView } from './views/app';
+import { AppView } from './views/app';
 import './index.scss';
 import { makeId } from './util';
 
@@ -55,17 +47,12 @@ const app = framework.init<AppState>(initialState, [
     ),
 ]);
 
-const view$ = app.state$.pipe(map((state) => appView(state, app.dispatch, blockRenderer)));
-
-const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
-view$
-    .pipe(
-        scan(
-            (acc: HTMLElement | VNode, value) => patch(acc, value),
-            document.getElementById('container') as HTMLElement,
-        ),
-    )
-    .subscribe();
+const appView = new AppView(
+    document.getElementById('container') as HTMLElement,
+    { dispatch: app.dispatch },
+    blockRenderer,
+);
+app.state$.subscribe((state) => appView.update(state));
 
 api.loadPages().then((pages) => {
     app.dispatch(messages.pagesLoaded({ pages }));
