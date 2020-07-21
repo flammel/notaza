@@ -25,15 +25,28 @@ export function sidebarView(state: AppState, dispatch: Dispatch): VNode {
         h(
             'ul.sidebar__list',
             selectors.searchResultSelector(state).map((result) =>
-                h('li.search-result', [
-                    h('a.internal', {
-                        props: { href: '/' + result.url, innerHTML: result.title },
-                    }),
-                    h(
-                        'ul',
-                        result.matches.map((match) => h('li.search-result__match', { props: { innerHTML: match } })),
-                    ),
-                ]),
+                h(
+                    'li.search-result',
+                    {
+                        on: {
+                            click: (): void => {
+                                window.history.pushState(null, result.url, result.url);
+                                dispatch({ type: 'SetUrlAction', url: result.url });
+                            },
+                        },
+                    },
+                    [
+                        h('a.internal', {
+                            props: { href: '/' + result.url, innerHTML: result.title },
+                        }),
+                        h(
+                            'ul',
+                            result.matches.map((match) =>
+                                h('li.search-result__match', { props: { innerHTML: match } }),
+                            ),
+                        ),
+                    ],
+                ),
             ),
         ),
     ]);
