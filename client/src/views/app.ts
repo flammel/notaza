@@ -5,7 +5,7 @@ import { AppState } from '../store/state';
 import { sidebarView } from './sidebar';
 import { pageView } from './page';
 import { notificationsView } from './notifications';
-import { BlockRenderer } from '../BlockRenderer';
+import { BlockRenderer } from '../service/BlockRenderer';
 import { Dispatch } from '../store/store';
 
 export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {

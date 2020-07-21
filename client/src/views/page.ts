@@ -5,7 +5,7 @@ import { Editor } from './editor';
 import { AppState, Block, BlockId } from '../store/state';
 import * as selectors from '../selectors/selectors';
 import { Dispatch } from '../store/store';
-import { BlockRenderer } from '../BlockRenderer';
+import { BlockRenderer } from '../service/BlockRenderer';
 import { actions } from '../store/action';
 
 function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {

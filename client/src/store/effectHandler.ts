@@ -1,4 +1,4 @@
-import { Api } from '../Api';
+import { Api } from '../service/Api';
 import { EffectHandler, Dispatch } from './store';
 import { AppEffect } from './effect';
 import { assertNever } from '../util';

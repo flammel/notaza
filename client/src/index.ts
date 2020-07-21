@@ -5,10 +5,10 @@ import { propsModule } from 'snabbdom/build/package/modules/props';
 import { eventListenersModule } from 'snabbdom/build/package/modules/eventlisteners';
 import { classModule } from 'snabbdom/build/package/modules/class';
 
-import { Api } from './Api';
-import { PageParser } from './PageParser';
-import { BlockRenderer } from './BlockRenderer';
-import { PageSerializer } from './PageSerializer';
+import { Api } from './service/Api';
+import { PageParser } from './service/PageParser';
+import { BlockRenderer } from './service/BlockRenderer';
+import { PageSerializer } from './service/PageSerializer';
 import { initialState, Block } from './store/state';
 import { appView } from './views/app';
 import { makeId, hasOwnProperty } from './util';

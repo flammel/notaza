@@ -1,5 +1,5 @@
-import { Page, PageId, Block } from './store/state';
-import { makeId } from './util';
+import { Page, PageId, Block } from '../store/state';
+import { makeId } from '../util';
 
 export class PageParser {
     public parse(id: PageId, rawMarkdown: string): Page {
