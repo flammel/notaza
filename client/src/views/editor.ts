@@ -1,12 +1,6 @@
 import { Block, Page } from '../store/state';
 import { Dispatch } from '../store/store';
 
-function resizeTextarea($textarea: HTMLTextAreaElement): void {
-    $textarea.setAttribute('rows', '1');
-    $textarea.style.height = 'auto';
-    $textarea.style.height = $textarea.scrollHeight + 'px';
-}
-
 class Autocomplete {
     public readonly $root: HTMLElement;
     private isOpen = false;
@@ -62,62 +56,77 @@ class Autocomplete {
 
 export class Editor {
     private readonly $textarea: HTMLTextAreaElement;
+    private stopOnBlur = false;
     // private readonly autocomplete: Autocomplete;
 
-    public constructor(block: Block, pages: Page[], dispatch: Dispatch) {
+    public constructor(dispatch: Dispatch) {
         const $textarea = document.createElement('textarea');
         $textarea.classList.add('editor');
-        $textarea.value = block.content;
-        $textarea.addEventListener('input', () => resizeTextarea($textarea));
-        $textarea.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
-                const contentAfter = $textarea.value.substring($textarea.selectionEnd);
-                dispatch({
-                    type: 'SplitBlockAction',
-                    before: contentBefore,
-                    after: contentAfter,
-                });
-            } else if (event.key === 'Tab') {
-                event.preventDefault();
-                if (event.shiftKey) {
-                    dispatch({ type: 'UnindentBlockAction', content: $textarea.value });
-                } else {
-                    dispatch({ type: 'IndentBlockAction', content: $textarea.value });
-                }
-            } else if (event.key === 'Delete' && event.ctrlKey) {
-                event.preventDefault();
-                dispatch({ type: 'RemoveBlockAction' });
-            } else if (event.key === 's' && event.ctrlKey) {
-                event.preventDefault();
+        $textarea.addEventListener('input', () => this.autoResize());
+        $textarea.addEventListener('keydown', (event) => this.handleKeyDown(event, dispatch));
+        $textarea.addEventListener('blur', () => {
+            if (this.stopOnBlur) {
+                this.stopOnBlur = false;
                 dispatch({ type: 'StopEditingAction', content: $textarea.value });
-            } else if (event.key === 'Escape') {
-                event.preventDefault();
-                dispatch({ type: 'StopEditingAction', content: $textarea.value });
-            } else if (event.key === 'k' && event.ctrlKey) {
-                event.preventDefault();
-                this.autoLink();
-            } else if (event.key === 'ArrowUp' && event.ctrlKey) {
-                event.preventDefault();
-                dispatch({ type: 'MoveUpAction', content: $textarea.value });
-            } else if (event.key === 'ArrowDown' && event.ctrlKey) {
-                event.preventDefault();
-                dispatch({ type: 'MoveDownAction', content: $textarea.value });
-            } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
-                event.preventDefault();
-                this.wrap('[', ']');
-            } else if (event.key === '*' && $textarea.selectionStart !== $textarea.selectionEnd) {
-                event.preventDefault();
-                this.wrap('*', '*');
-            } else if (event.key === '_' && $textarea.selectionStart !== $textarea.selectionEnd) {
-                event.preventDefault();
-                this.wrap('_', '_');
             }
         });
-
         this.$textarea = $textarea;
         // this.autocomplete = new Autocomplete(pages, $textarea);
+    }
+
+    private handleKeyDown(event: KeyboardEvent, dispatch: Dispatch): void {
+        const $textarea = this.$textarea;
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            const contentBefore = $textarea.value.substring(0, $textarea.selectionStart);
+            const contentAfter = $textarea.value.substring($textarea.selectionEnd);
+            this.stopOnBlur = false;
+            dispatch({
+                type: 'SplitBlockAction',
+                before: contentBefore,
+                after: contentAfter,
+            });
+        } else if (event.key === 'Tab') {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            if (event.shiftKey) {
+                dispatch({ type: 'UnindentBlockAction', content: $textarea.value });
+            } else {
+                dispatch({ type: 'IndentBlockAction', content: $textarea.value });
+            }
+        } else if (event.key === 'Delete' && event.ctrlKey) {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            dispatch({ type: 'RemoveBlockAction' });
+        } else if (event.key === 's' && event.ctrlKey) {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            dispatch({ type: 'StopEditingAction', content: $textarea.value });
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            dispatch({ type: 'StopEditingAction', content: $textarea.value });
+        } else if (event.key === 'k' && event.ctrlKey) {
+            event.preventDefault();
+            this.autoLink();
+        } else if (event.key === 'ArrowUp' && event.ctrlKey) {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            dispatch({ type: 'MoveUpAction', content: $textarea.value });
+        } else if (event.key === 'ArrowDown' && event.ctrlKey) {
+            event.preventDefault();
+            this.stopOnBlur = false;
+            dispatch({ type: 'MoveDownAction', content: $textarea.value });
+        } else if (event.key === '[' && $textarea.selectionStart !== $textarea.selectionEnd) {
+            event.preventDefault();
+            this.wrap('[', ']');
+        } else if (event.key === '*' && $textarea.selectionStart !== $textarea.selectionEnd) {
+            event.preventDefault();
+            this.wrap('*', '*');
+        } else if (event.key === '_' && $textarea.selectionStart !== $textarea.selectionEnd) {
+            event.preventDefault();
+            this.wrap('_', '_');
+        }
     }
 
     private wrap(before: string, after: string): void {
@@ -129,11 +138,13 @@ export class Editor {
         this.$textarea.setSelectionRange(start + 1, end + 1);
     }
 
-    public appendTo($parent: HTMLElement): void {
+    public start($parent: HTMLElement, block: Block): void {
+        this.$textarea.value = block.content;
+        this.stopOnBlur = true;
         $parent.appendChild(this.$textarea);
         // $parent.appendChild(this.autocomplete.$root);
 
-        resizeTextarea(this.$textarea);
+        this.autoResize();
         this.$textarea.focus();
         this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);
     }
@@ -145,5 +156,11 @@ export class Editor {
             this.$textarea.value.substring(0, this.$textarea.selectionStart) +
             `[${selected}](./${urlified}.md)` +
             this.$textarea.value.substring(this.$textarea.selectionEnd);
+    }
+
+    private autoResize(): void {
+        this.$textarea.setAttribute('rows', '1');
+        this.$textarea.style.height = 'auto';
+        this.$textarea.style.height = this.$textarea.scrollHeight + 'px';
     }
 }

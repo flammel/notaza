@@ -17,6 +17,7 @@ import { actionHandler } from './store/actionHandler';
 import { createEffectHandler } from './store/effectHandler';
 
 import './index.scss';
+import { Editor } from './views/editor';
 
 const pageParser = new PageParser();
 const pageSerializer = new PageSerializer();
@@ -24,10 +25,11 @@ const blockRenderer = new BlockRenderer();
 const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser, pageSerializer);
 
 const store = createStore(actionHandler, createEffectHandler(api), initialState);
+const editor = new Editor(store.dispatch);
 
 let oldVNode: HTMLElement | VNode = document.getElementById('container') as HTMLElement;
 const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
-store.subscribe((state) => (oldVNode = patch(oldVNode, appView(state, store.dispatch, blockRenderer))));
+store.subscribe((state) => (oldVNode = patch(oldVNode, appView(state, store.dispatch, blockRenderer, editor))));
 
 function parseInboxBlock(input: unknown): Block | undefined {
     if (input instanceof Object) {

@@ -7,11 +7,12 @@ import { pageView } from './page';
 import { notificationsView } from './notifications';
 import { BlockRenderer } from '../service/BlockRenderer';
 import { Dispatch } from '../store/store';
+import { Editor } from './editor';
 
-export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
+export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer, editor: Editor): VNode {
     return h('div.app', [
         sidebarView(state, dispatch),
-        pageView(state, dispatch, blockRenderer),
+        pageView(state, dispatch, blockRenderer, editor),
         notificationsView(state),
     ]);
 }

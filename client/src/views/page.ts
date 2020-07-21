@@ -23,13 +23,12 @@ function blockContentView(block: Block, dispatch: Dispatch, blockRenderer: Block
     });
 }
 
-function blockEditorView(block: Block, dispatch: Dispatch): VNode {
+function blockEditorView(block: Block, editor: Editor): VNode {
     return h('div.block__editor', {
         hook: {
             insert: (vnode): void => {
                 if (vnode.elm instanceof HTMLElement) {
-                    const editor = new Editor(block, [], dispatch);
-                    editor.appendTo(vnode.elm);
+                    editor.start(vnode.elm, block);
                 }
             },
         },
@@ -41,21 +40,20 @@ function blockView(
     editingId: BlockId | undefined,
     dispatch: Dispatch,
     blockRenderer: BlockRenderer,
+    editor: Editor,
 ): VNode {
     return h('li.block', [
         h('div.block__inner', [
-            block.id === editingId
-                ? blockEditorView(block, dispatch)
-                : blockContentView(block, dispatch, blockRenderer),
+            block.id === editingId ? blockEditorView(block, editor) : blockContentView(block, dispatch, blockRenderer),
         ]),
         h(
             'ul.block__children.blocks',
-            block.children.map((child) => blockView(child, editingId, dispatch, blockRenderer)),
+            block.children.map((child) => blockView(child, editingId, dispatch, blockRenderer, editor)),
         ),
     ]);
 }
 
-export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer): VNode {
+export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer, editor: Editor): VNode {
     const activePage = selectors.activePageSelector(state);
     return h(
         'div.page',
@@ -85,7 +83,9 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                   ),
                   h(
                       'ul.blocks',
-                      activePage.page.children.map((block) => blockView(block, state.editing, dispatch, blockRenderer)),
+                      activePage.page.children.map((block) =>
+                          blockView(block, state.editing, dispatch, blockRenderer, editor),
+                      ),
                   ),
                   h('h2', 'Backlinks'),
                   h(
@@ -98,7 +98,7 @@ export function pageView(state: AppState, dispatch: Dispatch, blockRenderer: Blo
                           h(
                               'ul.blocks',
                               backlinkPage.backlinks.map((block) =>
-                                  blockView(block, undefined, dispatch, blockRenderer),
+                                  blockView(block, undefined, dispatch, blockRenderer, editor),
                               ),
                           ),
                       ]),
