@@ -3,11 +3,13 @@ import { Dispatch } from '../store/store';
 
 class Autocomplete {
     public readonly $root: HTMLElement;
+    private pages: Page[] = [];
     private isOpen = false;
 
-    public constructor(private readonly pages: Page[], private readonly $textarea: HTMLTextAreaElement) {
+    public constructor(private readonly $textarea: HTMLTextAreaElement) {
         this.$root = document.createElement('ul');
         this.$root.classList.add('autocomplete');
+        this.$root.style.display = 'none';
 
         $textarea.addEventListener('keyup', (event) => {
             if (this.isOpen) {
@@ -23,8 +25,13 @@ class Autocomplete {
         });
     }
 
+    public setPages(pages: Page[]): void {
+        this.pages = pages;
+    }
+
     private close(): void {
         this.$root.innerHTML = '';
+        this.$root.style.display = 'none';
         this.isOpen = false;
     }
 
@@ -38,6 +45,7 @@ class Autocomplete {
             ) {
                 const $item = document.createElement('li');
                 $item.innerText = page.title;
+                $item.addEventListener('mousedown', (event) => event.preventDefault());
                 $item.addEventListener('click', () => {
                     const beforeCursor = this.$textarea.value.substring(0, this.$textarea.selectionStart);
                     this.$textarea.value =
@@ -51,13 +59,14 @@ class Autocomplete {
                 this.$root.appendChild($item);
             }
         }
+        this.$root.style.display = 'block';
     }
 }
 
 export class Editor {
     private readonly $textarea: HTMLTextAreaElement;
     private stopOnBlur = false;
-    // private readonly autocomplete: Autocomplete;
+    private readonly autocomplete: Autocomplete;
 
     public constructor(dispatch: Dispatch) {
         const $textarea = document.createElement('textarea');
@@ -71,7 +80,7 @@ export class Editor {
             }
         });
         this.$textarea = $textarea;
-        // this.autocomplete = new Autocomplete(pages, $textarea);
+        this.autocomplete = new Autocomplete($textarea);
     }
 
     private handleKeyDown(event: KeyboardEvent, dispatch: Dispatch): void {
@@ -129,6 +138,21 @@ export class Editor {
         }
     }
 
+    public start($parent: HTMLElement, block: Block): void {
+        this.$textarea.value = block.content;
+        this.stopOnBlur = true;
+        $parent.appendChild(this.$textarea);
+        $parent.appendChild(this.autocomplete.$root);
+
+        this.autoResize();
+        this.$textarea.focus();
+        this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);
+    }
+
+    public setPages(pages: Page[]): void {
+        this.autocomplete.setPages(pages);
+    }
+
     private wrap(before: string, after: string): void {
         const start = this.$textarea.selectionStart;
         const end = this.$textarea.selectionEnd;
@@ -136,17 +160,6 @@ export class Editor {
         this.$textarea.value =
             value.substring(0, start) + before + value.substring(start, end) + after + value.substring(end);
         this.$textarea.setSelectionRange(start + 1, end + 1);
-    }
-
-    public start($parent: HTMLElement, block: Block): void {
-        this.$textarea.value = block.content;
-        this.stopOnBlur = true;
-        $parent.appendChild(this.$textarea);
-        // $parent.appendChild(this.autocomplete.$root);
-
-        this.autoResize();
-        this.$textarea.focus();
-        this.$textarea.setSelectionRange(this.$textarea.value.length, this.$textarea.value.length);
     }
 
     private autoLink(): void {

@@ -29,7 +29,10 @@ const editor = new Editor(store.dispatch);
 
 let oldVNode: HTMLElement | VNode = document.getElementById('container') as HTMLElement;
 const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
-store.subscribe((state) => (oldVNode = patch(oldVNode, appView(state, store.dispatch, blockRenderer, editor))));
+store.subscribe((state) => {
+    editor.setPages(state.pages);
+    oldVNode = patch(oldVNode, appView(state, store.dispatch, blockRenderer, editor));
+});
 
 function parseInboxBlock(input: unknown): Block | undefined {
     if (input instanceof Object) {
