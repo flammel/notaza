@@ -29,9 +29,11 @@ export function sidebarView(state: AppState, dispatch: Dispatch): VNode {
                     'li.search-result',
                     {
                         on: {
-                            click: (): void => {
-                                window.history.pushState(null, result.url, result.url);
-                                dispatch({ type: 'SetUrlAction', url: result.url });
+                            click: (event: Event): void => {
+                                if (!(event.target instanceof HTMLAnchorElement)) {
+                                    window.history.pushState(null, result.url, result.url);
+                                    dispatch({ type: 'SetUrlAction', url: result.url });
+                                }
                             },
                         },
                     },

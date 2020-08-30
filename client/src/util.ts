@@ -1,3 +1,5 @@
+import { PageId, BlockId, AbsoluteBlockId } from './store/state';
+
 function padLeadingZero(x: number): string {
     return x.toString().padStart(2, '0');
 }
@@ -38,4 +40,8 @@ export function mapTree<In, Out>(tree: TreeNode<In>, fn: (node: In) => Out): Tre
 
 export function assertNever(x: never): never {
     throw new Error('Unexpected object: ' + x);
+}
+
+export function absoluteBlockId(pageId: PageId, blockId: BlockId): AbsoluteBlockId {
+    return { pageId, blockId };
 }

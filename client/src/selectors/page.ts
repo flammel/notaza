@@ -1,7 +1,7 @@
 import { notUndefined } from '../util';
-import { Page, Block, AppState } from '../store/state';
+import { Page, Block, AppState, PageId } from '../store/state';
 
-interface ActivePage {
+export interface ActivePage {
     page: Page;
     backlinks: PageWithBacklinks[];
 }
@@ -44,8 +44,8 @@ function pageBacklinks(page: Page, activePage: Page): PageWithBacklinks | undefi
     }
 }
 
-export function getActivePage(state: AppState): ActivePage | undefined {
-    const found = state.pages.find((page) => page.id === state.activePage);
+export function getActivePage(state: AppState, pageId: PageId): ActivePage | undefined {
+    const found = state.pages.find((page) => page.id === pageId);
     if (found !== undefined) {
         return {
             page: found,

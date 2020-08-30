@@ -71,15 +71,20 @@ api.loadPages().then((pages) => {
 });
 
 document.addEventListener('click', (event) => {
-    const target = event.target;
-    if (target instanceof HTMLElement) {
-        const closestLink = target.closest('a');
-        if (closestLink instanceof HTMLAnchorElement && closestLink.classList.contains('internal')) {
-            event.preventDefault();
-            const href = closestLink.getAttribute('href');
-            if (href) {
+    if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
+        event.preventDefault();
+        const href = event.target.getAttribute('href');
+        if (href) {
+            if (event.target.closest('.sidebar')) {
                 window.history.pushState(null, href, href);
                 store.dispatch({ type: 'SetUrlAction', url: href });
+            } else {
+                const newUrl = window.location.pathname + ',' + href.replace('./', '').replace('/', '')
+                window.history.pushState(null, newUrl, newUrl);
+                store.dispatch({
+                    type: 'SetUrlAction',
+                    url: newUrl,
+                });
             }
         }
     }

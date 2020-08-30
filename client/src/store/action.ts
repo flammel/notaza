@@ -1,4 +1,4 @@
-import { Page, BlockId, Block, Notification } from './state';
+import { Page, AbsoluteBlockId, Block, Notification, PageId } from './state';
 
 export interface SetSearch {
     type: 'SetSearchAction';
@@ -14,15 +14,16 @@ export interface PagesLoaded {
 }
 export interface SetPageTitle {
     type: 'SetPageTitleAction';
+    pageId: PageId;
     title: string;
 }
 export interface ToggleDone {
     type: 'ToggleDoneAction';
-    blockId: BlockId;
+    blockId: AbsoluteBlockId;
 }
 export interface StartEditing {
     type: 'StartEditingAction';
-    blockId: BlockId;
+    blockId: AbsoluteBlockId;
 }
 export interface StopEditing {
     type: 'StopEditingAction';

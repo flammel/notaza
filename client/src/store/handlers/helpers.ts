@@ -1,4 +1,4 @@
-import { PageId, AppState, BlockId, Block, Page } from '../state';
+import { PageId, AppState, BlockId, Block, Page, AbsoluteBlockId } from '../state';
 
 export function urlToId(url: string): PageId {
     if (url.startsWith('/')) {
@@ -10,35 +10,26 @@ export function urlToId(url: string): PageId {
     }
 }
 
-export function modifyBlockInActivePage(state: AppState, blockId: BlockId, fn: (oldBlock: Block) => Block): AppState {
-    return modifyActivePage(state, (page) => ({
-        ...page,
-        children: page.children.map((child) => modifyBlock(child, blockId, fn)),
-    }));
-}
-
-export function modifyActivePage(state: AppState, fn: (page: Page) => Page): AppState {
-    return {
-        ...state,
-        pages: state.pages.map((page) => (page.id === state.activePage ? fn(page) : page)),
-    };
-}
-
-export function setContent(state: AppState, content: string): AppState {
-    const editing = state.editing;
-    if (editing) {
-        return modifyBlockInActivePage(state, editing, (oldBlock) => ({ ...oldBlock, content }));
-    } else {
-        return state;
-    }
-}
-
-function modifyBlock(block: Block, blockId: BlockId, fn: (oldBlock: Block) => Block): Block {
+function recursivelyModifyBlock(block: Block, blockId: BlockId, fn: (oldBlock: Block) => Block): Block {
     if (block.id === blockId) {
         return fn(block);
     } else {
-        return { ...block, children: block.children.map((child) => modifyBlock(child, blockId, fn)) };
+        return { ...block, children: block.children.map((child) => recursivelyModifyBlock(child, blockId, fn)) };
     }
+}
+
+export function modifyBlock(state: AppState, blockId: AbsoluteBlockId, fn: (oldBlock: Block) => Block): AppState {
+    return modifyPage(state, blockId.pageId, (page) => ({
+        ...page,
+        children: page.children.map((child) => recursivelyModifyBlock(child, blockId.blockId, fn)),
+    }));
+}
+
+export function modifyPage(state: AppState, pageId: PageId, fn: (page: Page) => Page): AppState {
+    return {
+        ...state,
+        pages: state.pages.map((page) => (page.id === pageId ? fn(page) : page)),
+    };
 }
 
 export function removeBlock<T extends Block | Page>(block: T, blockId: BlockId): T {

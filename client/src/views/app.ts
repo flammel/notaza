@@ -12,7 +12,7 @@ import { Editor } from './editor';
 export function appView(state: AppState, dispatch: Dispatch, blockRenderer: BlockRenderer, editor: Editor): VNode {
     return h('div.app', [
         sidebarView(state, dispatch),
-        pageView(state, dispatch, blockRenderer, editor),
+        ...state.openPages.map((pageId) => pageView(state, dispatch, blockRenderer, editor, pageId)),
         notificationsView(state),
     ]);
 }

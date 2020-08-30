@@ -13,7 +13,7 @@ export function actionHandler(state: AppState, action: AppAction): Effects {
         case 'PagesLoadedAction':
             return handlers.setPages(state, action.pages);
         case 'SetPageTitleAction':
-            return handlers.setPageTitle(state, action.title);
+            return handlers.setPageTitle(state, action.pageId, action.title);
         case 'ToggleDoneAction':
             return handlers.toggleDone(state, action.blockId);
         case 'StartEditingAction':

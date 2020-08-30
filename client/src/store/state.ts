@@ -1,5 +1,6 @@
 export type PageId = string;
 export type BlockId = string;
+export type AbsoluteBlockId = { pageId: PageId; blockId: BlockId };
 export type NotificationId = string;
 
 export interface Block {
@@ -22,15 +23,15 @@ export interface Notification {
 
 export interface AppState {
     pages: Page[];
-    activePage: PageId | undefined;
-    editing: BlockId | undefined;
+    openPages: PageId[];
+    editing: AbsoluteBlockId | undefined;
     search: string;
     notifications: Notification[];
 }
 
 export const initialState: AppState = {
     pages: [],
-    activePage: undefined,
+    openPages: [],
     editing: undefined,
     search: '',
     notifications: [],

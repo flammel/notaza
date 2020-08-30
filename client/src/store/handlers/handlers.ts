@@ -1,5 +1,5 @@
-import { AppState, Page, BlockId, Notification, Block } from '../state';
-import { makeId, dateToString } from '../../util';
+import { AppState, Page, Notification, Block, PageId, AbsoluteBlockId } from '../state';
+import { makeId, dateToString, absoluteBlockId } from '../../util';
 import * as helpers from './helpers';
 import { Effects } from '../store';
 
@@ -7,8 +7,8 @@ import { Effects } from '../store';
 // helpers
 //
 
-function saveEffect(state: AppState): Effects {
-    const page = state.pages.find((page) => page.id === state.activePage);
+function saveEffect(state: AppState, pageId: PageId): Effects {
+    const page = state.pages.find((page) => page.id === pageId);
     return page === undefined ? [state] : [state, { type: 'SavePageEffect', page }];
 }
 
@@ -22,15 +22,6 @@ export function setSearch(state: AppState, search: string): Effects {
 
 export function setPages(state: AppState, pages: Page[]): Effects {
     return [{ ...state, pages }];
-}
-
-export function setEditing(state: AppState, blockId: BlockId): Effects {
-    return [
-        {
-            ...state,
-            editing: state.editing === undefined ? blockId : state.editing,
-        },
-    ];
 }
 
 export function addNotification(state: AppState, notification: Notification): Effects {
@@ -57,6 +48,8 @@ export function removeNotification(state: AppState, notification: Notification):
 }
 
 export function setUrl(state: AppState, url: string): Effects {
+    const ids = [...new Set(url.split(',').map((id) => id.replace('./', '').replace('/', '')))];
+
     const rawPageId = helpers.urlToId(url);
     const pageId = rawPageId === '' ? dateToString(new Date()) : rawPageId;
     const found = state.pages.find((page) => page.id === pageId);
@@ -72,7 +65,7 @@ export function setUrl(state: AppState, url: string): Effects {
                   },
               ];
     return [
-        { ...state, pages: newPages, activePage: pageId, editing: undefined },
+        { ...state, pages: newPages, openPages: ids, editing: undefined },
         {
             type: 'DocumentTitleEffect',
             title: (found ? found.title : pageId) + ' | Notaza',
@@ -93,38 +86,53 @@ export function uploadFileFinish(state: AppState, filename: string): Effects {
 //
 
 export function inbox(state: AppState, block: Block): Effects {
-    return saveEffect({
-        ...state,
-        ...helpers.modifyActivePage(state, (page) => ({ ...page, children: [block, ...page.children] })),
-    });
+    const pageId = state.openPages[0];
+    if (pageId) {
+        return saveEffect(
+            helpers.modifyPage(state, pageId, (page) => ({ ...page, children: [block, ...page.children] })),
+            pageId,
+        );
+    } else {
+        return [state];
+    }
 }
 
 // page editing operations
 
-export function setPageTitle(state: AppState, title: string): Effects {
-    return saveEffect({
-        ...state,
-        pages: state.pages.map((page) => (page.id === state.activePage ? { ...page, title } : page)),
-    });
+export function setPageTitle(state: AppState, pageId: PageId, title: string): Effects {
+    return saveEffect(
+        {
+            ...state,
+            pages: state.pages.map((page) => (page.id === pageId ? { ...page, title } : page)),
+        },
+        pageId,
+    );
 }
 
 // block editing operations
 
-export function startEditing(state: AppState, blockId: BlockId): Effects {
+export function startEditing(state: AppState, blockId: AbsoluteBlockId): Effects {
     return [{ ...state, editing: blockId }];
 }
 
 export function stopEditing(state: AppState, content: string): Effects {
-    return saveEffect({
-        ...state,
-        ...helpers.setContent(state, content),
-        editing: undefined,
-    });
+    const editing = state.editing;
+    if (editing) {
+        return saveEffect(
+            {
+                ...helpers.modifyBlock(state, editing, (block) => ({ ...block, content })),
+                editing: undefined,
+            },
+            editing.pageId,
+        );
+    } else {
+        return [state];
+    }
 }
 
-export function toggleDone(state: AppState, blockId: BlockId): Effects {
+export function toggleDone(state: AppState, blockId: AbsoluteBlockId): Effects {
     return saveEffect(
-        helpers.modifyBlockInActivePage(state, blockId, (oldBlock) => {
+        helpers.modifyBlock(state, blockId, (oldBlock) => {
             if (oldBlock.content.startsWith('[] ')) {
                 return { ...oldBlock, content: '[x] ' + oldBlock.content.substring(3) };
             }
@@ -133,17 +141,20 @@ export function toggleDone(state: AppState, blockId: BlockId): Effects {
             }
             return oldBlock;
         }),
+        blockId.pageId,
     );
 }
 
 export function removeBlock(state: AppState): Effects {
     const editing = state.editing;
     if (editing) {
-        return saveEffect({
-            ...state,
-            ...helpers.modifyActivePage(state, (page) => helpers.removeBlock(page, editing)),
-            editing: undefined,
-        });
+        return saveEffect(
+            {
+                ...helpers.modifyPage(state, editing.pageId, (page) => helpers.removeBlock(page, editing.blockId)),
+                editing: undefined,
+            },
+            editing.pageId,
+        );
     } else {
         return [state];
     }
@@ -154,11 +165,15 @@ export function splitBlock(state: AppState, before: string, after: string): Effe
     if (editing) {
         const newContent = (before.startsWith('[] ') || before.startsWith('[x] ')) && after === '' ? '[] ' : after;
         const newBlock = { id: makeId(), content: newContent, children: [] };
-        return saveEffect({
-            ...state,
-            ...helpers.modifyActivePage(state, (page) => helpers.splitBlock(page, editing, before, newBlock)),
-            editing: newBlock.id,
-        });
+        return saveEffect(
+            {
+                ...helpers.modifyPage(state, editing.pageId, (page) =>
+                    helpers.splitBlock(page, editing.blockId, before, newBlock),
+                ),
+                editing: absoluteBlockId(editing.pageId, newBlock.id),
+            },
+            editing.pageId,
+        );
     } else {
         return [state];
     }
@@ -175,10 +190,10 @@ function moveBlock(
 ): Effects {
     const editing = state.editing;
     if (editing) {
-        return saveEffect({
-            ...state,
-            ...helpers.modifyActivePage(state, (page) => mover(page, editing, content)),
-        });
+        return saveEffect(
+            helpers.modifyPage(state, editing.pageId, (page) => mover(page, editing.blockId, content)),
+            editing.pageId,
+        );
     } else {
         return [state];
     }

@@ -1,6 +1,6 @@
-import { AppState } from '../store/state';
+import { AppState, PageId } from '../store/state';
 import { getSearchResults } from './sidebar';
-import { getActivePage } from './page';
+import { getActivePage, ActivePage } from './page';
 
 const selectorCache = new Map<Selector<unknown>, [AppState, unknown]>();
 export type Selector<ResultT> = (state: AppState) => ResultT;
@@ -18,5 +18,6 @@ export function createSelector<ResultT>(fn: (state: AppState) => ResultT): Selec
 
 export const querySelector = createSelector<string>((state: AppState) => state.search);
 export const searchResultSelector = createSelector((state: AppState) => getSearchResults(state.pages, state.search));
-export const activePageSelector = createSelector((state: AppState) => getActivePage(state));
+export const pageSelector = (pageId: PageId): Selector<ActivePage | undefined> =>
+    createSelector((state: AppState) => getActivePage(state, pageId));
 export const notificationsSelector = createSelector((state: AppState) => state.notifications);
