@@ -282,15 +282,8 @@ a.current {
     position: relative;
     margin: 0;
 
-    &__content {
-        padding: 3px;
-        &:empty::before {
-            content: '\200B';
-        }
-    }
-
     &__inner {
-        position: relative;
+        padding: 3px;
     }
 
     blockquote {
@@ -314,17 +307,6 @@ a.current {
     }
 }
 
-.title-editor {
-    @include font();
-    border: none;
-    font-size: 2rem;
-    font-weight: bold;
-    width: 100%;
-    padding: 0;
-    &:focus {
-        outline: none;
-    }
-}
 
 .autocomplete {
     position: absolute;
