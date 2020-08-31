@@ -1,6 +1,5 @@
 import { PageParser } from './PageParser';
-import { PageSerializer } from './PageSerializer';
-import { Page } from '../store/state';
+import { Page, PageId } from '../types';
 
 interface ApiPage {
     id: string;
@@ -11,11 +10,7 @@ type SaveResult = { success: true; data: ApiPage[] } | { success: false; error: 
 type DeleteResult = { success: boolean };
 
 export class Api {
-    constructor(
-        private readonly url: string,
-        private readonly pageParser: PageParser,
-        private readonly pageSerializer: PageSerializer,
-    ) {}
+    constructor(private readonly url: string, private readonly pageParser: PageParser) {}
 
     public loadPages(): Promise<Page[]> {
         return fetch(this.url + '/pages')
@@ -25,21 +20,21 @@ export class Api {
             );
     }
 
-    public savePage(page: Page): Promise<Page[]> {
+    public savePage(id: PageId, content: string): Promise<void> {
         return fetch(this.url + '/pages', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                id: page.id,
-                markdown: this.pageSerializer.serialize(page),
+                id: id,
+                markdown: content,
             }),
         })
             .then((res) => res.json())
             .then((json: SaveResult) => {
                 if (json.success) {
-                    return Promise.resolve([]);
+                    return Promise.resolve();
                 } else {
                     return Promise.reject();
                 }

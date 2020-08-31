@@ -1,97 +1,51 @@
-import { init } from 'snabbdom/build/package/init';
-import { VNode } from 'snabbdom/build/package/vnode';
-import { attributesModule } from 'snabbdom/build/package/modules/attributes';
-import { propsModule } from 'snabbdom/build/package/modules/props';
-import { eventListenersModule } from 'snabbdom/build/package/modules/eventlisteners';
-import { classModule } from 'snabbdom/build/package/modules/class';
-
 import { Api } from './service/Api';
 import { PageParser } from './service/PageParser';
 import { BlockRenderer } from './service/BlockRenderer';
-import { PageSerializer } from './service/PageSerializer';
-import { initialState, Block } from './store/state';
-import { appView } from './views/app';
-import { makeId, hasOwnProperty } from './util';
-import { createStore } from './store/store';
-import { actionHandler } from './store/actionHandler';
-import { createEffectHandler } from './store/effectHandler';
 
 import './index.scss';
-import { Editor } from './views/editor';
+import { AppView } from './views/App';
+import { PageId, Page, Block } from './types';
 
 const pageParser = new PageParser();
-const pageSerializer = new PageSerializer();
 const blockRenderer = new BlockRenderer();
-const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser, pageSerializer);
+const api = new Api(window.localStorage.getItem('apiUri') ?? '', pageParser);
+const store: { pages: Page[] } = { pages: [] };
 
-const store = createStore(actionHandler, createEffectHandler(api), initialState);
-const editor = new Editor(store.dispatch);
-
-let oldVNode: HTMLElement | VNode = document.getElementById('container') as HTMLElement;
-const patch = init([attributesModule, propsModule, eventListenersModule, classModule]);
-store.subscribe((state) => {
-    editor.setPages(state.pages);
-    oldVNode = patch(oldVNode, appView(state, store.dispatch, blockRenderer, editor));
-});
-
-function parseInboxBlock(input: unknown): Block | undefined {
-    if (input instanceof Object) {
-        if (hasOwnProperty(input, 'content') && typeof input.content === 'string') {
-            const children = [];
-            if (hasOwnProperty(input, 'children') && Array.isArray(input.children)) {
-                for (const child of input.children) {
-                    const parsed = parseInboxBlock(child);
-                    if (parsed === undefined) {
-                        return undefined;
-                    } else {
-                        children.push(parsed);
-                    }
-                }
-            }
-            return {
-                id: makeId(),
-                content: input.content,
-                children,
-            };
-        }
-    }
-}
+const $container = document.getElementById('container') as HTMLElement;
+const appView = new AppView(
+    $container,
+    (block: Block) => blockRenderer.render(block),
+    (id: PageId, rawMarkdown: string) => {
+        api.savePage(id, rawMarkdown).then(() => {
+            store.pages = store.pages.map((page) => (page.id === id ? pageParser.parse(id, rawMarkdown) : page));
+            appView.setPages(store.pages);
+        });
+    },
+);
+appView.setUrl(window.location.pathname.slice(1));
 
 api.loadPages().then((pages) => {
-    store.dispatch({ type: 'PagesLoadedAction', pages });
-    store.dispatch({ type: 'SetUrlAction', url: window.location.pathname });
-    if (window.location.hash.startsWith('#inbox:')) {
-        const decoded = JSON.parse(atob(window.location.hash.substring('#inbox:'.length)));
-        const parsed = parseInboxBlock(decoded);
-        if (parsed !== undefined) {
-            store.dispatch({ type: 'InboxAction', block: parsed });
-            window.location.hash = '';
-        }
-    }
+    store.pages = pages;
+    appView.setPages(store.pages);
 });
 
 document.addEventListener('click', (event) => {
-    if (event.target instanceof HTMLAnchorElement && event.target.classList.contains('internal')) {
+    if (
+        event.target instanceof HTMLAnchorElement &&
+        !event.target.getAttribute('href')?.startsWith('http://') &&
+        !event.target.getAttribute('href')?.startsWith('https://')
+    ) {
         event.preventDefault();
         const href = event.target.getAttribute('href');
         if (href) {
-            if (event.target.closest('.sidebar')) {
-                window.history.pushState(null, href, href);
-                store.dispatch({ type: 'SetUrlAction', url: href });
-            } else {
-                const newUrl = window.location.pathname + ',' + href.replace('./', '').replace('/', '')
-                window.history.pushState(null, newUrl, newUrl);
-                store.dispatch({
-                    type: 'SetUrlAction',
-                    url: newUrl,
-                });
-            }
+            window.history.pushState(null, href, href);
+            appView.setUrl(window.location.pathname.slice(1));
         }
     }
 });
 
 window.addEventListener('popstate', () => {
-    store.dispatch({ type: 'SetUrlAction', url: window.location.pathname });
+    appView.setUrl(window.location.pathname.slice(1));
 });
 
 // PWA

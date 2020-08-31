@@ -13,6 +13,7 @@ export interface Page {
     id: PageId;
     title: string;
     children: Block[];
+    rawMarkdown: string;
 }
 
 export interface Notification {

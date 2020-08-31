@@ -1,4 +1,4 @@
-import { Page, PageId, Block } from '../store/state';
+import { Page, PageId, Block } from '../types';
 import { makeId } from '../util';
 
 export class PageParser {
@@ -11,6 +11,7 @@ export class PageParser {
                 id,
                 title,
                 children,
+                rawMarkdown,
             };
         } catch (e) {
             return {
@@ -23,6 +24,7 @@ export class PageParser {
                         children: [],
                     },
                 ],
+                rawMarkdown,
             };
         }
     }

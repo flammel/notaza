@@ -1,7 +1,7 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
-import { Block } from '../store/state';
+import { Block } from '../types';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {

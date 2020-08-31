@@ -7,6 +7,6 @@
         "strict": true,
         "lib": ["dom", "es2020.string", "es2019", "DOM.Iterable"],
         "moduleResolution": "node",
-        "allowSyntheticDefaultImports": true,
+        "allowSyntheticDefaultImports": true
     }
 }

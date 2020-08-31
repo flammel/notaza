@@ -1,5 +1,3 @@
-import { PageId, BlockId, AbsoluteBlockId } from './store/state';
-
 function padLeadingZero(x: number): string {
     return x.toString().padStart(2, '0');
 }
@@ -30,18 +28,6 @@ export function makeId(): string {
     return result;
 }
 
-type TreeNode<T> = T & { children: TreeNode<T>[] };
-export function mapTree<In, Out>(tree: TreeNode<In>, fn: (node: In) => Out): TreeNode<Out> {
-    return {
-        ...fn(tree),
-        children: tree.children.map((child) => mapTree(child, fn)),
-    };
-}
-
 export function assertNever(x: never): never {
     throw new Error('Unexpected object: ' + x);
-}
-
-export function absoluteBlockId(pageId: PageId, blockId: BlockId): AbsoluteBlockId {
-    return { pageId, blockId };
 }
