@@ -1,6 +1,7 @@
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Page } from './Page';
 import { getSearchResults } from './search';
+import { getBacklinks } from './backlinks';
 
 export class View {
     private readonly $content: HTMLElement;
@@ -81,8 +82,18 @@ export class View {
         return $sidebar;
     }
 
+    private findPage(): Page {
+        const found = this.pages.find((page) => page.filename === this.url);
+        if (found === undefined) {
+            const title = this.url.slice(0, -3);
+            return new Page(this.url, `---\ntitle:${title}\n---\n`);
+        } else {
+            return found;
+        }
+    }
+
     private renderPage(): void {
-        const page = this.pages.find((page) => page.filename === this.url);
+        const page = this.findPage();
         if (page !== undefined) {
             const $page = document.createElement('div');
             $page.classList.add('page');
@@ -92,9 +103,18 @@ export class View {
                 $title.innerHTML = page.title;
                 $page.insertBefore($title, $page.firstChild);
             }
+
+            const $editLink = document.createElement('a');
+            $editLink.setAttribute('href', window.__NOTAZA_EDIT_LINK(page.filename));
+            $editLink.setAttribute('target', '_blank');
+            $editLink.setAttribute('rel', 'noreferrer noopener');
+            $editLink.innerText = 'edit';
+            $page.appendChild($editLink);
+
+            $page.appendChild(this.renderBacklinks(page));
+
             this.$content.innerHTML = '';
             this.$content.appendChild($page);
-            this.$content.appendChild(this.renderBacklinks(page));
 
             document.title = 'KB | ' + page.title;
         } else {
@@ -133,29 +153,21 @@ export class View {
 
         const $headline = document.createElement('h2');
         $headline.innerText = 'References';
+        $fragment.appendChild($headline);
 
-        const $list = document.createElement('ul');
-
-        for (const other of this.pages) {
-            if (other.filename !== page.filename) {
-                if (
-                    other.body.includes('](./' + page.filename + ')') ||
-                    other.body.includes('](./' + page.filename.slice(0, -3) + ')') ||
-                    other.body.includes('#' + page.filename.slice(0, -3)) ||
-                    other.body.includes('[[' + page.title + ']]')
-                ) {
-                    const $other = document.createElement('li');
-                    const $link = document.createElement('a');
-                    $link.innerText = other.title;
-                    $link.setAttribute('href', '/#/' + other.filename);
-                    $other.appendChild($link);
-                    $list.appendChild($other);
-                }
+        for (const pageWithBacklinks of getBacklinks(this.markdownRenderer, this.pages, page)) {
+            const $title = document.createElement('h3');
+            const $link = document.createElement('a');
+            $link.setAttribute('href', '/#/' + pageWithBacklinks.page.filename);
+            $link.innerText = pageWithBacklinks.page.title;
+            $title.appendChild($link);
+            $fragment.appendChild($title);
+            for (const backlink of pageWithBacklinks.backlinks) {
+                const $backlink = document.createElement('div');
+                $backlink.innerHTML = this.markdownRenderer.renderInline(backlink.content);
+                $fragment.appendChild($backlink);
             }
         }
-
-        $fragment.appendChild($headline);
-        $fragment.appendChild($list);
 
         return $fragment;
     }
