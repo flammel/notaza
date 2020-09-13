@@ -1,6 +1,6 @@
 <?php
 
-$contentDir = getenv('CONTENT_DIR');
+$contentDir = getenv('NOTAZA_CONTENT_DIR');
 
 $files = [];
 foreach (new DirectoryIterator($contentDir) as $file) {
