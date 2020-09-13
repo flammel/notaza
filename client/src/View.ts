@@ -87,6 +87,11 @@ export class View {
             const $page = document.createElement('div');
             $page.classList.add('page');
             $page.innerHTML = this.markdownRenderer.render(page);
+            if (!($page.firstChild instanceof HTMLHeadingElement)) {
+                const $title = document.createElement('h1');
+                $title.innerHTML = page.title;
+                $page.insertBefore($title, $page.firstChild);
+            }
             this.$content.innerHTML = '';
             this.$content.appendChild($page);
             this.$content.appendChild(this.renderBacklinks(page));
