@@ -93,33 +93,34 @@ export class View {
     }
 
     private renderPage(): void {
-        const page = this.findPage();
-        if (page !== undefined) {
-            const $page = document.createElement('div');
-            $page.classList.add('page');
-            $page.innerHTML = this.markdownRenderer.render(page);
-            if (!($page.firstChild instanceof HTMLHeadingElement)) {
-                const $title = document.createElement('h1');
-                $title.innerHTML = page.title;
-                $page.insertBefore($title, $page.firstChild);
-            }
-
-            const $editLink = document.createElement('a');
-            $editLink.setAttribute('href', window.__NOTAZA_EDIT_LINK(page.filename));
-            $editLink.setAttribute('target', '_blank');
-            $editLink.setAttribute('rel', 'noreferrer noopener');
-            $editLink.innerText = 'edit';
-            $page.appendChild($editLink);
-
-            $page.appendChild(this.renderBacklinks(page));
-
+        if (this.url === '') {
             this.$content.innerHTML = '';
-            this.$content.appendChild($page);
-
-            document.title = 'KB | ' + page.title;
-        } else {
-            this.$content.innerHTML = '';
+            return;
         }
+
+        const page = this.findPage();
+        const $page = document.createElement('div');
+        $page.classList.add('page');
+        $page.innerHTML = this.markdownRenderer.render(page);
+        if (!($page.firstChild instanceof HTMLHeadingElement)) {
+            const $title = document.createElement('h1');
+            $title.innerHTML = page.title;
+            $page.insertBefore($title, $page.firstChild);
+        }
+
+        const $editLink = document.createElement('a');
+        $editLink.setAttribute('href', window.__NOTAZA_EDIT_LINK(page.filename));
+        $editLink.setAttribute('target', '_blank');
+        $editLink.setAttribute('rel', 'noreferrer noopener');
+        $editLink.innerText = 'edit';
+        $page.appendChild($editLink);
+
+        $page.appendChild(this.renderBacklinks(page));
+
+        this.$content.innerHTML = '';
+        this.$content.appendChild($page);
+
+        document.title = 'KB | ' + page.title;
     }
 
     private renderSearchResults(): void {
