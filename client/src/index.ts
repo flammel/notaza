@@ -4,17 +4,33 @@ import { View } from './View';
 
 import './index.scss';
 
-const api = new Api(window.localStorage.getItem('apiUri') ?? '');
-const view = new View(
-    document.getElementById('container') as HTMLElement,
-    new MarkdownRenderer(),
-    window.location.hash.substring(2),
-);
+const apiUrl = window.localStorage.getItem('apiUri');
 
-api.loadPages().then((pages) => {
-    view.setPages(pages);
-});
+if (apiUrl === null) {
+    const $form = document.createElement('form');
+    const $input = document.createElement('input');
+    const $button = document.createElement('button');
 
-window.addEventListener('hashchange', () => {
-    view.setUrl(window.location.hash.substring(2));
-});
+    $form.addEventListener('submit', () => {
+        window.localStorage.setItem('apiUrl', $input.value);
+    });
+
+    $form.appendChild($input);
+    $form.appendChild($button);
+    document.body.appendChild($form);
+} else {
+    const api = new Api(apiUrl);
+    const view = new View(
+        document.getElementById('container') as HTMLElement,
+        new MarkdownRenderer(),
+        window.location.hash.substring(2),
+    );
+
+    api.loadPages().then((pages) => {
+        view.setPages(pages);
+    });
+
+    window.addEventListener('hashchange', () => {
+        view.setUrl(window.location.hash.substring(2));
+    });
+}

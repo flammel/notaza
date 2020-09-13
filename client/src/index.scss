@@ -34,7 +34,7 @@ body {
 
 .sidebar {
     width: 18rem;
-    max-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     border-right: 1px solid rgba(0, 0, 0, 0.07);
@@ -83,7 +83,7 @@ body {
 }
 
 .content {
-    max-height: 100vh;
+    height: 100vh;
     overflow-y: auto;
     flex-grow: 1;
     margin-left: 1rem;

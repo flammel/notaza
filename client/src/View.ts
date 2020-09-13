@@ -95,6 +95,8 @@ export class View {
             this.$content.innerHTML = '';
             this.$content.appendChild($page);
             this.$content.appendChild(this.renderBacklinks(page));
+
+            document.title = 'KB | ' + page.title;
         } else {
             this.$content.innerHTML = '';
         }
