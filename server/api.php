@@ -7,7 +7,7 @@ foreach (new DirectoryIterator($contentDir) as $file) {
     if ($file->isFile()) {
         $files[] = [
             'filename' => $file->getFilename(),
-            'content' => file_get_contents($file->getRealPath()),
+            'content' => str_replace("\r", "\n", str_replace("\r\n", "\n", file_get_contents($file->getRealPath()))),
         ];
     }
 }
