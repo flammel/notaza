@@ -164,4 +164,8 @@ export class MarkdownRenderer {
     public parse(page: Page): Token[] {
         return this.mdIt.parse(page.body, {});
     }
+
+    public renderTokens(tokens: Token[]): string {
+        return this.mdIt.renderer.render(tokens, this.mdIt.options, {});
+    }
 }

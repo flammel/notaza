@@ -165,7 +165,7 @@ export class View {
             $fragment.appendChild($title);
             for (const backlink of pageWithBacklinks.backlinks) {
                 const $backlink = document.createElement('div');
-                $backlink.innerHTML = this.markdownRenderer.renderInline(backlink.content);
+                $backlink.innerHTML = this.markdownRenderer.renderTokens(backlink.content);
                 $fragment.appendChild($backlink);
             }
         }
