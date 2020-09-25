@@ -15,18 +15,6 @@ interface Backlink {
     content: Token[];
 }
 
-function containsListItem(startIndex: number, tokens: Token[]): boolean {
-    for (let index = startIndex; index < tokens.length; index++) {
-        const token = tokens[index];
-        if (token.type === 'list_item_open') {
-            return true;
-        } else if (token.type === 'list_item_close') {
-            return false;
-        }
-    }
-    return false;
-}
-
 function untilClose(startIndex: number, tokens: Token[]): Token[] {
     let level = 0;
     for (let index = startIndex + 1; index < tokens.length; index++) {
