@@ -86,7 +86,7 @@ export class View {
         const found = this.pages.find((page) => page.filename === this.url);
         if (found === undefined) {
             const title = this.url.slice(0, -3);
-            return new Page(this.url, `---\ntitle:${title}\n---\n`);
+            return new Page(this.url, '0', `---\ntitle:${title}\n---\n`);
         } else {
             return found;
         }
@@ -107,13 +107,6 @@ export class View {
             $title.innerHTML = page.title;
             $page.insertBefore($title, $page.firstChild);
         }
-
-        const $editLink = document.createElement('a');
-        $editLink.setAttribute('href', window.__NOTAZA_EDIT_LINK(page.filename));
-        $editLink.setAttribute('target', '_blank');
-        $editLink.setAttribute('rel', 'noreferrer noopener');
-        $editLink.innerText = 'edit';
-        $page.appendChild($editLink);
 
         $page.appendChild(this.renderBacklinks(page));
 

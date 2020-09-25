@@ -11,11 +11,13 @@ function parseFrontMatter(frontMatter: string): FrontMatter {
 
 export class Page {
     public readonly filename: string;
+    public readonly version: string;
     public readonly frontMatter: FrontMatter;
     public readonly body: string;
 
-    public constructor(filename: string, content: string) {
+    public constructor(filename: string, version: string, content: string) {
         this.filename = filename;
+        this.version = version;
         const parts = content.split('\n---\n');
         if (parts.length < 2 || !parts[0].startsWith('---\n')) {
             this.frontMatter = new Map();

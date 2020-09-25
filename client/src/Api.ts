@@ -1,21 +1,50 @@
 import { Page } from './Page';
-interface ApiPage {
-    filename: string;
+
+interface GithubApiFile {
+    name: string;
+    sha: string;
+    git_url: string;
+}
+
+interface GithubApiFileWithContent {
     content: string;
 }
 
-function decodeResponse(json: unknown): Promise<ApiPage[]> {
-    const assumed = json as { data: ApiPage[] };
-    return Promise.resolve(assumed.data);
-}
-
 export class Api {
-    public constructor(private readonly baseUrl: string) {}
+    private readonly fetchOptions: RequestInit;
+    public constructor(private readonly user: string, private readonly repo: string, token: string) {
+        this.fetchOptions = {
+            headers: {
+                authorization: `token ${token}`,
+                accept: 'application/vnd.github.v3+json',
+            },
+        };
+    }
 
     public loadPages(): Promise<Page[]> {
-        return fetch(this.baseUrl)
-            .then((r) => r.json())
-            .then((json) => decodeResponse(json))
-            .then((apiPages) => apiPages.map((apiPage) => new Page(apiPage.filename, apiPage.content)));
+        const fetchFiles = fetch(
+            `https://api.github.com/repos/${this.user}/${this.repo}/contents`,
+            this.fetchOptions,
+        ).then((response) => response.json());
+        const openCache = window.caches.open('notaza-file-cache-v1');
+        return Promise.all([fetchFiles, openCache]).then(([files, cache]) =>
+            Promise.all(files.map((file: GithubApiFile) => this.fetchFile(file, cache))),
+        );
+    }
+
+    private fetchFile(file: GithubApiFile, cache: Cache): Promise<Page> {
+        const request = new Request(file.git_url, this.fetchOptions);
+        return cache
+            .match(request)
+            .then((response) => response || fetch(request))
+            .then((response) => {
+                cache.put(request, response.clone());
+                return response;
+            })
+            .then((response) => response.json())
+            .then(
+                (fileWithContent: GithubApiFileWithContent) =>
+                    new Page(file.name, file.sha, atob(fileWithContent.content)),
+            );
     }
 }
