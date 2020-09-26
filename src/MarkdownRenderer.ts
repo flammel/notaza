@@ -157,10 +157,6 @@ export class MarkdownRenderer {
         return rendered;
     }
 
-    public renderInline(markdown: string): string {
-        return this.mdIt.renderInline(markdown);
-    }
-
     public parse(page: Page): Token[] {
         return this.mdIt.parse(page.body, {});
     }
