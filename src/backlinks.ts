@@ -15,7 +15,7 @@ interface Backlink {
     content: Token[];
 }
 
-function untilClose(startIndex: number, tokens: Token[]): Token[] {
+function untilClose(startIndex: number, tokens: Token[]): [number, Token[]] {
     let level = 0;
     for (let index = startIndex + 1; index < tokens.length; index++) {
         const token = tokens[index];
@@ -23,13 +23,13 @@ function untilClose(startIndex: number, tokens: Token[]): Token[] {
             level++;
         } else if (token.type === 'list_item_close') {
             if (level === 0) {
-                return tokens.slice(startIndex, index + 1);
+                return [index, tokens.slice(startIndex, index + 1)];
             } else {
                 level--;
             }
         }
     }
-    return [];
+    return [startIndex, []];
 }
 
 function wrapInList(tokens: Token[]): Token[] {
@@ -48,8 +48,10 @@ function extractBacklinks(tokens: Token[], activePage: Page): Backlink[] {
             listItemIndices.pop();
         } else if (token.type === 'inline' && containsReference(token.content, activePage)) {
             if (listItemIndices.length >= 2) {
+                const [newIndex, tokensUntilClose] = untilClose(listItemIndices[listItemIndices.length - 2], tokens);
+                index = newIndex;
                 backlinks.push({
-                    content: wrapInList(untilClose(listItemIndices[listItemIndices.length - 2], tokens)),
+                    content: wrapInList(tokensUntilClose),
                 });
             } else {
                 backlinks.push({ content: [token] });
