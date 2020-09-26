@@ -10,6 +10,16 @@ interface GithubApiFileWithContent {
     content: string;
 }
 
+// https://stackoverflow.com/a/30106551
+function b64DecodeUnicode(str: string): string {
+    return decodeURIComponent(
+        atob(str)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join(''),
+    );
+}
+
 export class Api {
     private readonly fetchOptions: RequestInit;
     public constructor(private readonly user: string, private readonly repo: string, token: string) {
@@ -44,7 +54,7 @@ export class Api {
             .then((response) => response.json())
             .then(
                 (fileWithContent: GithubApiFileWithContent) =>
-                    new Page(file.name, file.sha, atob(fileWithContent.content)),
+                    new Page(file.name, file.sha, b64DecodeUnicode(fileWithContent.content)),
             );
     }
 }
