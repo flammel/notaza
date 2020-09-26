@@ -105,6 +105,7 @@ export class View {
     public setQuery(query: string): void {
         this.query = query;
         this.renderSearchResults();
+        this.markSidebarItemActive();
     }
 
     private markSidebarItemActive(): void {
