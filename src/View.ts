@@ -7,14 +7,21 @@ export class View {
     private readonly $content: HTMLElement;
     private readonly $results: HTMLElement;
     private readonly markdownRenderer: MarkdownRenderer;
+    private readonly editLink: (page: Page) => string;
 
     private pages: Page[] = [];
     private url: string = '';
     private query: string = '';
 
-    public constructor($container: HTMLElement, markdownRenderer: MarkdownRenderer, url: string) {
+    public constructor(
+        $container: HTMLElement,
+        markdownRenderer: MarkdownRenderer,
+        url: string,
+        editLink: (page: Page) => string,
+    ) {
         this.url = url;
         this.markdownRenderer = markdownRenderer;
+        this.editLink = editLink;
 
         this.$content = document.createElement('div');
         this.$content.classList.add('content');
@@ -86,7 +93,7 @@ export class View {
         const found = this.pages.find((page) => page.filename === this.url);
         if (found === undefined) {
             const title = this.url.slice(0, -3);
-            return new Page(this.url, '0', `---\ntitle:${title}\n---\n`);
+            return new Page(this.url, undefined, `---\ntitle:${title}\n---\n`);
         } else {
             return found;
         }
@@ -107,6 +114,13 @@ export class View {
             $title.innerHTML = page.title;
             $page.insertBefore($title, $page.firstChild);
         }
+
+        const $editLink = document.createElement('a');
+        $editLink.setAttribute('href', this.editLink(page));
+        $editLink.setAttribute('target', '_blank');
+        $editLink.setAttribute('rel', 'noreferrer noopener');
+        $editLink.innerText = 'edit';
+        $page.appendChild($editLink);
 
         $page.appendChild(this.renderBacklinks(page));
 
