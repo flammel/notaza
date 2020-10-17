@@ -24,6 +24,8 @@ if (config !== undefined) {
         view.setPages(pages);
     });
 
+    api.fetchBookmarks().then((bookmarks) => view.setBookmarks(bookmarks));
+
     window.addEventListener('hashchange', () => {
         view.setUrl(window.location.hash.substring(2));
     });

@@ -1,3 +1,4 @@
+import { Bookmark, parseBookmarks } from './Bookmarks';
 import { Page } from './Page';
 
 interface GithubApiFile {
@@ -38,8 +39,18 @@ export class Api {
         ).then((response) => response.json());
         const openCache = window.caches.open('notaza-file-cache-v1');
         return Promise.all([fetchFiles, openCache]).then(([files, cache]) =>
-            Promise.all(files.map((file: GithubApiFile) => this.fetchFile(file, cache))),
+            Promise.all(
+                files
+                    .filter((file: GithubApiFile) => file.name.endsWith('.md'))
+                    .map((file: GithubApiFile) => this.fetchFile(file, cache)),
+            ),
         );
+    }
+
+    public fetchBookmarks(): Promise<Bookmark[]> {
+        return fetch(`https://api.github.com/repos/${this.user}/${this.repo}/contents/bookmarks.txt`, this.fetchOptions)
+            .then((response) => response.json())
+            .then((json) => parseBookmarks(b64DecodeUnicode(json.content)));
     }
 
     private fetchFile(file: GithubApiFile, cache: Cache): Promise<Page> {

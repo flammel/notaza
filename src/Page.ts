@@ -32,4 +32,8 @@ export class Page {
     public get title(): string {
         return this.frontMatter.get('title') || this.filename;
     }
+
+    public get fileId(): string {
+        return this.filename.slice(0, -3);
+    }
 }

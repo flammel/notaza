@@ -2,6 +2,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Page } from './Page';
 import { getSearchResults } from './search';
 import { getBacklinks } from './backlinks';
+import { Bookmark } from './Bookmarks';
 
 interface PageTree {
     page: Page;
@@ -23,7 +24,7 @@ function buildPageTree(pages: Page[], query: string): PageTree[] {
     const trees: PageTree[] = [];
     const stack: PageTree[] = [];
 
-    const sorted = pages.sort((a, b) => a.filename.slice(0, -3).localeCompare(b.filename.slice(0, -3)));
+    const sorted = pages.sort((a, b) => a.fileId.localeCompare(b.fileId));
     for (const page of sorted) {
         let top = stack.pop();
         const tree = { page, children: [] };
@@ -61,6 +62,7 @@ export class View {
     private readonly editLink: (page: Page) => string;
 
     private pages: Page[] = [];
+    private bookmarks: Bookmark[] = [];
     private url: string = '';
     private query: string = '';
 
@@ -94,6 +96,11 @@ export class View {
         this.renderPage();
         this.renderSearchResults();
         this.markSidebarItemActive();
+    }
+
+    public setBookmarks(bookmarks: Bookmark[]): void {
+        this.bookmarks = bookmarks;
+        this.renderPage();
     }
 
     public setUrl(url: string): void {
@@ -205,12 +212,66 @@ export class View {
         $editLink.innerText = 'edit';
         $page.appendChild($editLink);
 
+        $page.appendChild(this.renderBookmarks(page));
+
         $page.appendChild(this.renderBacklinks(page));
 
         this.$content.innerHTML = '';
         this.$content.appendChild($page);
 
         document.title = 'KB | ' + page.title;
+    }
+
+    private renderBookmarks(page: Page): Node {
+        const $fragment = document.createDocumentFragment();
+
+        const $headline = document.createElement('h2');
+        $headline.innerText = 'Bookmarks';
+        $fragment.appendChild($headline);
+
+        const matchingBookmarks = this.bookmarks.filter((bookmark) => {
+            const description = bookmark.description.toLocaleLowerCase();
+            return (
+                bookmark.tags.includes(page.fileId) ||
+                description.includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
+                description.includes('](./' + page.fileId + ')') ||
+                description.includes('#' + page.fileId) ||
+                description.includes('[[' + page.title.toLocaleLowerCase() + ']]')
+            );
+        });
+        for (const bookmark of matchingBookmarks) {
+            const $container = document.createElement('div');
+            $container.classList.add('bookmark');
+            const $title = document.createElement('h3');
+            $title.classList.add('bookmark__title');
+            const $link = document.createElement('a');
+            $link.setAttribute('href', bookmark.url);
+            $link.setAttribute('target', '_blank');
+            $link.setAttribute('rel', 'noreferrer noopener');
+            $link.innerText = bookmark.title;
+            $title.appendChild($link);
+
+            const $url = document.createElement('div');
+            $url.classList.add('bookmark__url');
+            $url.innerText = bookmark.url;
+
+            const $tags = document.createElement('div');
+            $tags.classList.add('bookmark__tags');
+            $tags.innerHTML = bookmark.tags.map((tag) => `<a href="#/${tag}.md">${tag}</a>`).join(' ');
+
+            const $description = document.createElement('div');
+            $description.classList.add('bookmark__description');
+            $description.innerHTML = this.markdownRenderer.renderString(bookmark.description);
+
+            $container.appendChild($title);
+            $container.appendChild($url);
+            $container.appendChild($tags);
+            $container.appendChild($description);
+
+            $fragment.appendChild($container);
+        }
+
+        return $fragment;
     }
 
     private renderBacklinks(page: Page): Node {

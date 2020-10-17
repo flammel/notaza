@@ -148,12 +148,16 @@ export class MarkdownRenderer {
     private readonly cache = new Map<string, string>();
 
     public render(page: Page): string {
-        const cached = this.cache.get(page.body);
+        return this.renderString(page.body);
+    }
+
+    public renderString(markdown: string): string {
+        const cached = this.cache.get(markdown);
         if (cached !== undefined) {
             return cached;
         }
-        const rendered = this.mdIt.render(page.body);
-        this.cache.set(page.body, rendered);
+        const rendered = this.mdIt.render(markdown);
+        this.cache.set(markdown, rendered);
         return rendered;
     }
 
