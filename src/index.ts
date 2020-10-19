@@ -26,6 +26,8 @@ if (config !== undefined) {
 
     api.fetchBookmarks().then((bookmarks) => view.setBookmarks(bookmarks));
 
+    api.fetchTweets().then((teweets) => view.setTweets(teweets));
+
     window.addEventListener('hashchange', () => {
         view.setUrl(window.location.hash.substring(2));
     });

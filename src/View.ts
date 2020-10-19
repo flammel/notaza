@@ -1,8 +1,7 @@
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { Page } from './Page';
+import { Bookmark, Page, Tweet } from './Page';
 import { getSearchResults } from './search';
 import { getBacklinks } from './backlinks';
-import { Bookmark } from './Bookmarks';
 
 interface PageTree {
     page: Page;
@@ -63,6 +62,7 @@ export class View {
 
     private pages: Page[] = [];
     private bookmarks: Bookmark[] = [];
+    private tweets: Tweet[] = [];
     private url: string = '';
     private query: string = '';
 
@@ -100,6 +100,11 @@ export class View {
 
     public setBookmarks(bookmarks: Bookmark[]): void {
         this.bookmarks = bookmarks;
+        this.renderPage();
+    }
+
+    public setTweets(tweets: Tweet[]): void {
+        this.tweets = tweets;
         this.renderPage();
     }
 
@@ -214,6 +219,8 @@ export class View {
 
         $page.appendChild(this.renderBookmarks(page));
 
+        $page.appendChild(this.renderTweets(page));
+
         $page.appendChild(this.renderBacklinks(page));
 
         this.$content.innerHTML = '';
@@ -229,7 +236,7 @@ export class View {
         $headline.innerText = 'Bookmarks';
         $fragment.appendChild($headline);
 
-        const matchingBookmarks = this.bookmarks.filter((bookmark) => {
+        const matchingBookmarks: Bookmark[] = this.bookmarks.filter((bookmark) => {
             const description = bookmark.description.toLocaleLowerCase();
             return (
                 bookmark.tags.includes(page.fileId) ||
@@ -267,6 +274,65 @@ export class View {
             $container.appendChild($url);
             $container.appendChild($tags);
             $container.appendChild($description);
+
+            $fragment.appendChild($container);
+        }
+
+        return $fragment;
+    }
+
+    private renderTweets(page: Page): Node {
+        const $fragment = document.createDocumentFragment();
+
+        const $headline = document.createElement('h2');
+        $headline.innerText = 'Tweets';
+        $fragment.appendChild($headline);
+
+        const matchingTweets: Tweet[] = this.tweets.filter((tweet) => {
+            const description = (tweet.tweet + tweet.notes).toLocaleLowerCase();
+            return (
+                tweet.tags.includes(page.fileId) ||
+                description.includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
+                description.includes('](./' + page.fileId + ')') ||
+                description.includes('#' + page.fileId) ||
+                description.includes('[[' + page.title.toLocaleLowerCase() + ']]')
+            );
+        });
+        for (const tweet of matchingTweets) {
+            const $container = document.createElement('div');
+            $container.classList.add('tweet');
+
+            const $header = document.createElement('div');
+            $header.classList.add('tweet__header');
+
+            const $link = document.createElement('a');
+            $link.setAttribute('href', tweet.url);
+            $link.setAttribute('target', '_blank');
+            $link.setAttribute('rel', 'noreferrer noopener');
+            $link.innerText = '@' + tweet.userHandle;
+            $header.appendChild($link);
+
+            const $date = document.createElement('span');
+            $date.classList.add('tweet__date');
+            $date.innerText = ' on ' + tweet.date;
+            $header.appendChild($date);
+
+            const $tags = document.createElement('div');
+            $tags.classList.add('tweet__tags');
+            $tags.innerHTML = tweet.tags.map((tag) => `<a href="#/${tag}.md">${tag}</a>`).join(' ');
+
+            const $tweet = document.createElement('div');
+            $tweet.classList.add('tweet__tweet');
+            $tweet.innerHTML = tweet.tweet.replace(/\n/g, '<br>');
+
+            const $notes = document.createElement('div');
+            $notes.classList.add('tweet__notes');
+            $notes.innerHTML = this.markdownRenderer.renderString(tweet.notes);
+
+            $container.appendChild($header);
+            $container.appendChild($tags);
+            $container.appendChild($tweet);
+            $container.appendChild($notes);
 
             $fragment.appendChild($container);
         }

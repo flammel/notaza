@@ -37,3 +37,29 @@ export class Page {
         return this.filename.slice(0, -3);
     }
 }
+
+export class Bookmark {
+    public constructor(
+        public readonly id: string,
+        public readonly date: string,
+        public readonly url: string,
+        public readonly title: string,
+        public readonly tags: string[],
+        public readonly description: string,
+    ) {}
+}
+
+export class Tweet {
+    public constructor(
+        public readonly url: string,
+        public readonly date: string,
+        public readonly tags: string[],
+        public readonly tweet: string,
+        public readonly notes: string,
+    ) {}
+
+    public get userHandle(): string {
+        const match = this.url.match(/^https:\/\/twitter\.com\/([^\/]+)\/.*$/);
+        return match ? match[1] : this.url;
+    }
+}

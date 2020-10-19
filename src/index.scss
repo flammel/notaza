@@ -185,3 +185,25 @@ body {
         margin: 0 0 0.5rem 0;
     }
 }
+
+.tweet {
+    margin-bottom: 1rem;
+    &__url {
+        font-size: 0.875rem;
+        color: $font-color-light;
+    }
+    &__tags {
+        margin: 0.5rem 0;
+
+        a {
+            margin-right: 0.5rem;
+        }
+    }
+    &__tweet {
+        border-left: 0.25rem solid $border-color;
+        padding-left: 0.5rem;
+    }
+    &__notes p {
+        margin: 0 0 0.5rem 0;
+    }
+}
