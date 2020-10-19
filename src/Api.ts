@@ -1,4 +1,4 @@
-import { Bookmark, parseBookmarks } from './Bookmarks';
+import { Bookmark } from './Bookmarks';
 import { Page } from './Page';
 
 interface GithubApiFile {
@@ -48,9 +48,27 @@ export class Api {
     }
 
     public fetchBookmarks(): Promise<Bookmark[]> {
-        return fetch(`https://api.github.com/repos/${this.user}/${this.repo}/contents/bookmarks.txt`, this.fetchOptions)
+        return fetch(
+            `https://api.github.com/repos/${this.user}/${this.repo}/contents/bookmarks.json`,
+            this.fetchOptions,
+        )
             .then((response) => response.json())
-            .then((json) => parseBookmarks(b64DecodeUnicode(json.content)));
+            .then((json: GithubApiFileWithContent) => JSON.parse(b64DecodeUnicode(json.content)))
+            .then((json: any[]) => {
+                return json.map(
+                    (item) =>
+                        new Bookmark(
+                            item.id.trim(),
+                            item.date.trim(),
+                            item.url.trim(),
+                            item.title.trim(),
+                            item.tags
+                                .split(' ')
+                                .map((tag: string) => tag.replace('#', '').trim()),
+                            Array.isArray(item.description) ? item.description.join('\n\n') : item.description.trim(),
+                        ),
+                );
+            });
     }
 
     private fetchFile(file: GithubApiFile, cache: Cache): Promise<Page> {
