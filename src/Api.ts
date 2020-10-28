@@ -1,5 +1,6 @@
 import { Bookmark, Tweet } from './Page';
 import { Page } from './Page';
+import { parseBookmarks, parseTweets } from './toml';
 
 interface GithubApiFile {
     name: string;
@@ -9,23 +10,6 @@ interface GithubApiFile {
 
 interface GithubApiFileWithContent {
     content: string;
-}
-
-interface JsonBookmark {
-    id: string;
-    date: string;
-    url: string;
-    title: string;
-    tags: string;
-    description: string | string[];
-}
-
-interface JsonTweet {
-    url: string;
-    date: string;
-    tags: string;
-    tweet: string | string[];
-    notes: string | string[];
 }
 
 // https://stackoverflow.com/a/30106551
@@ -66,42 +50,19 @@ export class Api {
 
     public fetchBookmarks(): Promise<Bookmark[]> {
         return fetch(
-            `https://api.github.com/repos/${this.user}/${this.repo}/contents/bookmarks.json`,
+            `https://api.github.com/repos/${this.user}/${this.repo}/contents/bookmarks.toml`,
             this.fetchOptions,
         )
             .then((response) => response.json())
-            .then((json: GithubApiFileWithContent) => JSON.parse(b64DecodeUnicode(json.content)))
-            .then((json: JsonBookmark[]) => {
-                return json.map(
-                    (item) =>
-                        new Bookmark(
-                            item.id.trim(),
-                            item.date.trim(),
-                            item.url.trim(),
-                            item.title.trim(),
-                            item.tags.split(' ').map((tag: string) => tag.replace('#', '').trim()),
-                            Array.isArray(item.description) ? item.description.join('\n\n') : item.description.trim(),
-                        ),
-                );
-            });
+            .then((json: GithubApiFileWithContent) => b64DecodeUnicode(json.content))
+            .then((toml: string) => parseBookmarks(toml));
     }
 
     public fetchTweets(): Promise<Tweet[]> {
-        return fetch(`https://api.github.com/repos/${this.user}/${this.repo}/contents/tweets.json`, this.fetchOptions)
+        return fetch(`https://api.github.com/repos/${this.user}/${this.repo}/contents/tweets.toml`, this.fetchOptions)
             .then((response) => response.json())
-            .then((json: GithubApiFileWithContent) => JSON.parse(b64DecodeUnicode(json.content)))
-            .then((json: JsonTweet[]) => {
-                return json.map(
-                    (item) =>
-                        new Tweet(
-                            item.url.trim(),
-                            item.date.trim(),
-                            item.tags.split(' ').map((tag: string) => tag.replace('#', '').trim()),
-                            Array.isArray(item.tweet) ? item.tweet.join('\n') : item.tweet.trim(),
-                            Array.isArray(item.notes) ? item.notes.join('\n\n') : item.notes.trim(),
-                        ),
-                );
-            });
+            .then((json: GithubApiFileWithContent) => b64DecodeUnicode(json.content))
+            .then((toml: string) => parseTweets(toml));
     }
 
     private fetchFile(file: GithubApiFile, cache: Cache): Promise<Page> {
