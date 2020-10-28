@@ -1,59 +1,56 @@
-import { Bookmark, Tweet } from "./Page";
+import { Bookmark, Tweet } from './Page';
 
-type ParserState<T = string> = ParserStateSuccess<T> | ParserStateError<T>;
-
-interface ParserStateSuccess<T> {
-    line: number;
-    value: T;
-    error: null;
+class ParserError extends Error {
+    constructor(expected: string, received: string, line: number) {
+        super(`expected '${expected}' but got '${received}' on line ${line}`);
+    }
 }
 
-interface ParserStateError<T> {
+interface ParserState<T = string> {
     line: number;
-    value: null;
-    error: string;
+    value: T;
 }
 
 function parseTable(lines: string[], index: number, expected: string): ParserState {
     const line = lines[index];
     if (line === undefined) {
-        return { line: index, value: null, error: 'expected table ' + expected + ' but got EOF' };
+        throw new ParserError('table ' + expected, 'EOF', index);
     }
     const match = line.match(new RegExp('\\[\\[(' + expected + ')\\]\\]'));
     if (match !== null) {
-        return { line: index + 1, value: match[1], error: null };
+        return { line: index + 1, value: match[1] };
     } else {
-        return { line: index, value: null, error: 'expected table ' + expected + ' but got ' + line };
+        throw new ParserError('table ' + expected, line, index);
     }
 }
 
 function parseDate(lines: string[], index: number, key: string): ParserState {
     const line = lines[index];
     if (line === undefined) {
-        return { line: index, value: null, error: 'expected key ' + key + ' but got EOF' };
+        throw new ParserError('key ' + key, 'EOF', index);
     }
     const singleMatch = line.match(
         new RegExp('^' + key + ' = ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'),
     );
     if (singleMatch !== null) {
-        return { line: index + 1, value: singleMatch[1], error: null };
+        return { line: index + 1, value: singleMatch[1] };
     } else {
-        return { line: index, value: null, error: 'expected date in key ' + key + ' but got ' + line };
+        throw new ParserError('date in key ' + key, line, index);
     }
 }
 
 function parseKeyValue(lines: string[], index: number, key: string): ParserState {
     const line = lines[index];
     if (line === undefined) {
-        return { line: index, value: null, error: 'expected key ' + key + ' but got EOF' };
+        throw new ParserError('key ' + key, 'EOF', index);
     }
     const singleMatch = line.match(new RegExp('^' + key + " = (?:'''(.*)'''|'([^']*)'|\"([^\"]*)\")$"));
     if (singleMatch !== null) {
-        return { line: index + 1, value: singleMatch[1] ?? singleMatch[2] ?? singleMatch[3], error: null };
+        return { line: index + 1, value: singleMatch[1] ?? singleMatch[2] ?? singleMatch[3] };
     }
     const multiMatch = line.match(new RegExp('^' + key + " = '''$"));
     if (multiMatch === null) {
-        return { line: index, value: null, error: 'expected key ' + key + ' but got ' + line };
+        throw new ParserError('key ' + key, line, index);
     }
     const result = [];
     index++;
@@ -62,9 +59,9 @@ function parseKeyValue(lines: string[], index: number, key: string): ParserState
         index++;
     }
     if (lines[index] === undefined) {
-        return { line: index, value: null, error: "expected closing ''' but got EOF" };
+        throw new ParserError("closing '''", 'EOF', index);
     }
-    return { line: index + 1, value: result.join('\n'), error: null };
+    return { line: index + 1, value: result.join('\n') };
 }
 
 function parseFile<T>(toml: string, parser: (lines: string[], index: number) => ParserState<T>): T[] {
@@ -78,13 +75,8 @@ function parseFile<T>(toml: string, parser: (lines: string[], index: number) => 
             continue;
         }
         const parserResult = parser(lines, index);
-        if (parserResult.value !== null) {
-            result.push(parserResult.value);
-            index = parserResult.line + 1;
-        } else {
-            console.error(parserResult.error + " on line " + parserResult.line);
-            break;
-        }
+        result.push(parserResult.value);
+        index = parserResult.line;
     }
     return result;
 }
@@ -96,32 +88,16 @@ function tweetParser(lines: string[], index: number): ParserState<Tweet> {
     const tags = parseKeyValue(lines, date.line, 'tags');
     const tweet = parseKeyValue(lines, tags.line, 'tweet');
     const notes = parseKeyValue(lines, tweet.line, 'notes');
-    if (
-        url.value !== null &&
-        date.value !== null &&
-        tags.value !== null &&
-        tweet.value !== null &&
-        notes.value !== null
-    ) {
-        return {
-            line: notes.line,
-            value: new Tweet(
-                url.value,
-                date.value,
-                tags.value.split(' ').map((tag) => tag.replace('#', '')),
-                tweet.value,
-                notes.value,
-            ),
-            error: null
-        };
-    } else {
-        const error = [table, url, date, tags, tweet, notes].find(({ error }) => error !== null);
-        return {
-            line: error?.line ?? index,
-            value: null,
-            error: error?.error ?? 'unknown tweet parsing error',
-        };
-    }
+    return {
+        line: notes.line,
+        value: new Tweet(
+            url.value,
+            date.value,
+            tags.value.split(' ').map((tag) => tag.replace('#', '')),
+            tweet.value,
+            notes.value,
+        ),
+    };
 }
 function bookmarkParser(lines: string[], index: number): ParserState<Bookmark> {
     const table = parseTable(lines, index, 'bookmarks');
@@ -131,34 +107,17 @@ function bookmarkParser(lines: string[], index: number): ParserState<Bookmark> {
     const title = parseKeyValue(lines, url.line, 'title');
     const tags = parseKeyValue(lines, title.line, 'tags');
     const description = parseKeyValue(lines, tags.line, 'description');
-    if (
-        id.value !== null &&
-        date.value !== null &&
-        url.value !== null &&
-        title.value !== null &&
-        tags.value !== null &&
-        description.value !== null
-    ) {
-        return {
-            line: description.line,
-            value: new Bookmark(
-                id.value,
-                date.value,
-                url.value,
-                title.value,
-                tags.value.split(' ').map((tag) => tag.replace('#', '')),
-                description.value,
-            ),
-            error: null
-        };
-    } else {
-        const error = [table, id, date, url, title, tags, description].find(({ error }) => error !== null);
-        return {
-            line: error?.line ?? index,
-            value: null,
-            error: error?.error ?? 'unknown bookmark parsing error',
-        };
-    }
+    return {
+        line: description.line,
+        value: new Bookmark(
+            id.value,
+            date.value,
+            url.value,
+            title.value,
+            tags.value.split(' ').map((tag) => tag.replace('#', '')),
+            description.value,
+        ),
+    };
 }
 
 export function parseTweets(toml: string): Tweet[] {
