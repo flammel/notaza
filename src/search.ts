@@ -1,4 +1,4 @@
-import { Page } from './Page';
+import { Bookmark, Page, Tweet } from './Page';
 import { notUndefined } from './util';
 
 interface SearchResult {
@@ -49,9 +49,10 @@ function compareResults(a: SearchResult, b: SearchResult): number {
     }
 }
 
-export function getSearchResults(pages: Page[], query: string): SearchResult[] {
+export function getSearchResults(pages: Page[], query: string): Page[] {
     return pages
         .map((page) => searchInPage(page, query))
         .filter(notUndefined)
-        .sort(compareResults);
+        .sort(compareResults)
+        .map((result) => result.page);
 }

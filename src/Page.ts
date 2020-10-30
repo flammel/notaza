@@ -29,6 +29,11 @@ export class Page {
         }
     }
 
+    public static fromFilename(filename: string): Page {
+        const title = filename.slice(0, -3);
+        return new Page(filename, undefined, `---\ntitle:${title}\n---\n`);
+    }
+
     public get title(): string {
         return this.frontMatter.get('title') || this.filename;
     }

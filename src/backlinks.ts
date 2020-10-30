@@ -6,12 +6,12 @@ interface Backlink {
     content: Token[];
 }
 
-interface PageWithBacklinks {
+export interface PageWithBacklinks {
     page: Page;
     backlinks: Backlink[];
 }
 
-function containsReference(str: string, page: Page): boolean {
+export function containsReference(str: string, page: Page): boolean {
     return (
         str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
         str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase().slice(0, -3) + ')') ||
