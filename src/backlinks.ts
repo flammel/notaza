@@ -2,6 +2,15 @@ import { Page } from './Page';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import Token from 'markdown-it/lib/token';
 
+interface Backlink {
+    content: Token[];
+}
+
+interface PageWithBacklinks {
+    page: Page;
+    backlinks: Backlink[];
+}
+
 function containsReference(str: string, page: Page): boolean {
     return (
         str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
@@ -9,10 +18,6 @@ function containsReference(str: string, page: Page): boolean {
         str.toLocaleLowerCase().includes('#' + page.filename.toLocaleLowerCase().slice(0, -3)) ||
         str.toLocaleLowerCase().includes('[[' + page.title.toLocaleLowerCase() + ']]')
     );
-}
-
-interface Backlink {
-    content: Token[];
 }
 
 function untilClose(startIndex: number, tokens: Token[]): [number, Token[]] {
@@ -60,11 +65,6 @@ function extractBacklinks(tokens: Token[], activePage: Page): Backlink[] {
     }
 
     return backlinks;
-}
-
-interface PageWithBacklinks {
-    page: Page;
-    backlinks: Backlink[];
 }
 
 export function getBacklinks(markdownRenderer: MarkdownRenderer, pages: Page[], activePage: Page): PageWithBacklinks[] {

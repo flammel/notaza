@@ -71,12 +71,11 @@ function parseFile<T>(toml: string, parser: (lines: string[], index: number) => 
         while (lines[index] === '') {
             index++;
         }
-        if (lines[index] === undefined) {
-            continue;
+        if (lines[index] !== undefined) {
+            const parserResult = parser(lines, index);
+            result.push(parserResult.value);
+            index = parserResult.line;
         }
-        const parserResult = parser(lines, index);
-        result.push(parserResult.value);
-        index = parserResult.line;
     }
     return result;
 }
@@ -99,6 +98,7 @@ function tweetParser(lines: string[], index: number): ParserState<Tweet> {
         ),
     };
 }
+
 function bookmarkParser(lines: string[], index: number): ParserState<Bookmark> {
     const table = parseTable(lines, index, 'bookmarks');
     const id = parseKeyValue(lines, table.line, 'id');
