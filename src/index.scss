@@ -116,15 +116,12 @@ body {
     }
 }
 
-.content {
+.content, .search {
     height: 100vh;
     overflow-y: auto;
     flex-grow: 1;
-    margin-left: 1rem;
-}
-
-.page {
     width: 50rem;
+    padding: 0 1rem;
 
     a,
     a:visited {
@@ -166,7 +163,9 @@ body {
 }
 
 .bookmark {
-    margin-bottom: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid $border-color;
+
     &__title {
         margin: 0;
     }
@@ -175,8 +174,7 @@ body {
         color: $font-color-light;
     }
     &__tags {
-        margin: 0.5rem 0;
-
+        padding: 0.5rem 0;
         a {
             margin-right: 0.5rem;
         }
@@ -187,14 +185,15 @@ body {
 }
 
 .tweet {
-    margin-bottom: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid $border-color;
+
     &__url {
         font-size: 0.875rem;
         color: $font-color-light;
     }
     &__tags {
-        margin: 0.5rem 0;
-
+        padding: 0.5rem 0;
         a {
             margin-right: 0.5rem;
         }
@@ -205,5 +204,23 @@ body {
     }
     &__notes p {
         margin: 0 0 0.5rem 0;
+    }
+}
+
+.app {
+    .content {
+        display: block;
+    }
+    .search {
+        display: none;
+    }
+
+    &.-searching {
+        .content {
+            display: none;
+        }
+        .search {
+            display: block;
+        }
     }
 }

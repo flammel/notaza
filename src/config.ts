@@ -6,7 +6,7 @@ export interface Config {
     token: string;
 }
 
-export function loadConfig(): Config | undefined {
+export function loadConfig(): Promise<Config> {
     const localStorageKey = 'notaza-config';
     const fromLocalStorage = window.localStorage.getItem(localStorageKey);
     if (fromLocalStorage !== null) {
@@ -20,7 +20,7 @@ export function loadConfig(): Config | undefined {
         ) {
             const { user, repo, token } = jsonFromLocalStorage;
             if (typeof user === 'string' && typeof repo === 'string' && typeof token === 'string') {
-                return { user, repo, token };
+                return Promise.resolve({ user, repo, token });
             }
         }
     }
@@ -31,6 +31,8 @@ export function loadConfig(): Config | undefined {
     if (typeof user === 'string' && typeof repo === 'string' && typeof token === 'string') {
         const config = { user, repo, token };
         window.localStorage.setItem(localStorageKey, JSON.stringify(config));
-        return config;
+        return Promise.resolve(config);
+    } else {
+        return Promise.reject('Could not load config');
     }
 }
