@@ -94,6 +94,11 @@ export function mountView(
                 <h1>Search</h1>
                 <div class="search__results"></div>
             </div>
+            <footer class="footer">
+                <a href="https://github.com/flammel/notaza" target="_blank" rel="noreferrer noopener">Github</a>
+                -
+                <a href="/#/_settings.md">Settings</a>
+            </footer>
         </div>
     `;
 
@@ -144,6 +149,7 @@ export function mountView(
             $content.firstElementChild?.insertAdjacentElement('afterbegin', $title);
         }
         document.title = 'KB | ' + page.title;
+        $editLink.style.pointerEvents = page.filename.startsWith('_') ? 'none' : 'auto';
         $editLink.setAttribute('href', page.editLink);
         hideSearch();
         contentMark.unmark();
