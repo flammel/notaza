@@ -1,7 +1,6 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
-import { Page } from './Page';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -143,29 +142,18 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
         }</a>`;
 };
 
-export class MarkdownRenderer {
-    private readonly mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks);
-    private readonly cache = new Map<string, string>();
-
-    public render(page: Page): string {
-        return this.renderString(page.body);
-    }
-
-    public renderString(markdown: string): string {
-        const cached = this.cache.get(markdown);
-        if (cached !== undefined) {
-            return cached;
-        }
-        const rendered = this.mdIt.render(markdown);
-        this.cache.set(markdown, rendered);
-        return rendered;
-    }
-
-    public parse(page: Page): Token[] {
-        return this.mdIt.parse(page.body, {});
-    }
-
-    public renderTokens(tokens: Token[]): string {
-        return this.mdIt.renderer.render(tokens, this.mdIt.options, {});
-    }
+const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks);
+const cache = new Map<string, string>();
+export function notazamd(): { render: (markdown: string) => string } {
+    return {
+        render: (markdown) => {
+            const cached = cache.get(markdown);
+            if (cached !== undefined) {
+                return cached;
+            }
+            const rendered = mdIt.render(markdown);
+            cache.set(markdown, rendered);
+            return rendered;
+        },
+    };
 }

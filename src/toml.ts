@@ -1,4 +1,4 @@
-import { Bookmark, Tweet } from './Page';
+import { Bookmark, Tweet } from './model';
 import { notUndefined } from './util';
 
 // https://www.sigmacomputing.com/blog/writing-a-parser-combinator-from-scratch-in-typescript/
@@ -50,21 +50,21 @@ function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
             }
         }
         return success(currentContext, values);
-    }
+    };
 }
 
 function many<T>(parser: Parser<T>): Parser<T[]> {
     return (context) => {
         const values: T[] = [];
         let currentContext = context;
-        let result = parser(currentContext)
+        let result = parser(currentContext);
         while (result.success) {
             values.push(result.value);
             currentContext = result.context;
             result = parser(currentContext);
         }
         return success(currentContext, values);
-    }
+    };
 }
 
 function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
@@ -76,7 +76,7 @@ function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
             }
         }
         return failure(context, 'oneOf');
-    }
+    };
 }
 
 function optional<T>(parser: Parser<T>): Parser<T | null> {
@@ -86,7 +86,7 @@ function optional<T>(parser: Parser<T>): Parser<T | null> {
             return success(result.context, result.value);
         }
         return success(context, null);
-    }
+    };
 }
 
 function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
@@ -95,9 +95,9 @@ function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
         if (result.success) {
             return success(result.context, fn(result.value));
         } else {
-            return result
+            return result;
         }
-    }
+    };
 }
 
 function tableHeader(tableName: string): Parser<null> {
@@ -110,7 +110,7 @@ function tableHeader(tableName: string): Parser<null> {
             }
         }
         return failure(context, 'table ' + tableName);
-    }
+    };
 }
 
 function dateKeyValue(key: string): Parser<string> {
@@ -125,7 +125,7 @@ function dateKeyValue(key: string): Parser<string> {
             }
         }
         return failure(context, 'date in key ' + key);
-    }
+    };
 }
 
 function singleLineStringKeyValue(key: string): Parser<string> {
@@ -138,7 +138,7 @@ function singleLineStringKeyValue(key: string): Parser<string> {
             }
         }
         return failure(context, 'single line string in key ' + key);
-    }
+    };
 }
 
 function multiLineStringKeyValue(key: string): Parser<string> {
@@ -154,13 +154,13 @@ function multiLineStringKeyValue(key: string): Parser<string> {
                     index++;
                 }
                 if (context.lines[index] === "'''") {
-                    return success({ ...context, index: index + 1 }, result.join("\n"));
+                    return success({ ...context, index: index + 1 }, result.join('\n'));
                 }
                 return failure({ ...context, index }, "closing '''");
             }
         }
         return failure(context, 'multi line string in key ' + key);
-    }
+    };
 }
 
 function emptyLine(): Parser<null> {
@@ -170,7 +170,7 @@ function emptyLine(): Parser<null> {
             return success(advance(context), null);
         }
         return failure(context, 'empty line');
-    }
+    };
 }
 
 const tweetsParser = many(
@@ -182,16 +182,22 @@ const tweetsParser = many(
             singleLineStringKeyValue('tags'),
             oneOf(singleLineStringKeyValue('tweet'), multiLineStringKeyValue('tweet')),
             oneOf(singleLineStringKeyValue('notes'), multiLineStringKeyValue('notes')),
-            optional(emptyLine())
+            optional(emptyLine()),
         ]),
         ([_header, url, date, tags, tweet, notes]) => {
             if (url !== null && date !== null && tags !== null && tweet !== null && notes !== null) {
-                return new Tweet(url, date, tags.split(' ').map((tag) => tag.replace('#', '')), tweet, notes)
+                return {
+                    url,
+                    date,
+                    tags: tags.split(' ').map((tag) => tag.replace('#', '')),
+                    tweet,
+                    notes,
+                };
             } else {
                 return undefined;
             }
-        }
-    )
+        },
+    ),
 );
 
 const bookmarksParser = many(
@@ -204,16 +210,30 @@ const bookmarksParser = many(
             singleLineStringKeyValue('title'),
             singleLineStringKeyValue('tags'),
             oneOf(singleLineStringKeyValue('description'), multiLineStringKeyValue('description')),
-            optional(emptyLine())
+            optional(emptyLine()),
         ]),
         ([_header, id, date, url, title, tags, description]) => {
-            if (id !== null && date !== null && url !== null && title !== null && tags !== null && description !== null) {
-                return new Bookmark(id, date, url, title, tags.split(' ').map((tag) => tag.replace('#', '')), description);
+            if (
+                id !== null &&
+                date !== null &&
+                url !== null &&
+                title !== null &&
+                tags !== null &&
+                description !== null
+            ) {
+                return {
+                    id,
+                    date,
+                    url,
+                    title,
+                    tags: tags.split(' ').map((tag) => tag.replace('#', '')),
+                    description,
+                };
             } else {
                 return undefined;
             }
-        }
-    )
+        },
+    ),
 );
 
 export function parseTweets(toml: string): Tweet[] {

@@ -73,38 +73,11 @@ body {
         }
     }
 
-    &__item {
-        display: flex;
-        flex-wrap: wrap;
-
-        .sidebar__list {
-            display: none;
-        }
-
-        &--open {
-            .sidebar__list {
-                display: block;
-            }
-        }
-    }
-
-    &__item-opener {
-        width: 2.5rem;
-        height: 2.5rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-    }
-
     &__link {
-        display: flex;
-        min-height: 2.5rem;
-        align-items: center;
+        display: block;
         padding: 0.5rem 1rem;
         text-decoration: none;
         color: $font-color;
-        flex-grow: 1;
 
         &:hover {
             text-decoration: underline;
@@ -116,7 +89,8 @@ body {
     }
 }
 
-.content, .search {
+.content,
+.search {
     height: 100vh;
     overflow-y: auto;
     flex-grow: 1;

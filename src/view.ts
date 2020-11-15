@@ -1,58 +1,13 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
-
-export interface BookmarkViewModel {
-    url: string;
-    title: string;
-    date: string;
-    tags: string[];
-    descriptionHtml: string;
-}
-
-export interface TweetViewModel {
-    url: string;
-    userHandle: string;
-    date: string;
-    tags: string[];
-    tweet: string;
-    notesHtml: string;
-}
-
-export interface BacklinkViewModel {
-    filename: string;
-    title: string;
-    backlinks: Array<{ contentHtml: string }>;
-}
-
-export interface PageViewModel {
-    filename: string;
-    title: string;
-    html: string;
-    editLink: string;
-    bookmarks: BookmarkViewModel[];
-    tweets: TweetViewModel[];
-    backlinks: BacklinkViewModel[];
-}
-
-export interface PageTree {
-    title: string;
-    filename: string;
-    children: PageTree[];
-}
-
-export interface SidebarViewModel {
-    trees: PageTree[];
-}
-
-export type SearchResult =
-    | { type: 'bookmark'; bookmark: BookmarkViewModel }
-    | { type: 'tweet'; tweet: TweetViewModel }
-    | { type: 'page'; page: BacklinkViewModel };
-
-export interface SearchViewModel {
-    query: string;
-    results: SearchResult[];
-}
+import {
+    BacklinkViewModel,
+    BookmarkViewModel,
+    PageViewModel,
+    SearchViewModel,
+    SidebarViewModel,
+    TweetViewModel,
+} from './viewModel';
 
 function renderBookmark(bookmark: BookmarkViewModel): Node {
     const $container = document.createElement('div');
@@ -162,10 +117,10 @@ function renderBacklink(pageWithBacklinks: BacklinkViewModel): Node {
     $link.innerText = pageWithBacklinks.title;
     $title.appendChild($link);
     $container.appendChild($title);
-    for (const backlink of pageWithBacklinks.backlinks) {
-        const $backlink = document.createElement('div');
-        $backlink.innerHTML = backlink.contentHtml;
-        $container.appendChild($backlink);
+    for (const block of pageWithBacklinks.blocks) {
+        const $block = document.createElement('div');
+        $block.innerHTML = block.content;
+        $container.appendChild($block);
     }
     return $container;
 }
@@ -209,47 +164,32 @@ function renderPage(page: PageViewModel): HTMLElement {
     return $page;
 }
 
-function renderTree(tree: PageTree): HTMLElement {
-    const $item = document.createElement('li');
-    $item.classList.add('sidebar__item');
-
-    const $link = document.createElement('a');
-    $link.classList.add('sidebar__link');
-    $link.setAttribute('href', '/#/' + tree.filename);
-    $link.innerHTML = tree.title;
-    $item.appendChild($link);
-
-    if (tree.children.length > 0) {
-        const $opener = document.createElement('span');
-        $opener.classList.add('sidebar__item-opener');
-        $opener.innerText = '+';
-        $opener.addEventListener('click', () => {
-            $item.classList.toggle('sidebar__item--open');
-        });
-        $item.appendChild($opener);
-
-        const $children = document.createElement('ul');
-        $children.classList.add('sidebar__list');
-        for (const child of tree.children) {
-            $children.appendChild(renderTree(child));
-        }
-        $item.appendChild($children);
-    }
-
-    return $item;
-}
-
 function renderContent(page$: Observable<PageViewModel>): HTMLElement {
     const $content = document.createElement('div');
     $content.classList.add('content');
+    const mark = new Mark($content);
 
     page$.subscribe((page) => {
         $content.innerHTML = '';
         $content.appendChild(renderPage(page));
         document.title = 'KB | ' + page.title;
+        hideSearch();
+        mark.mark(getQuery());
     });
 
     return $content;
+}
+
+function getQuery(): string {
+    const input = document.querySelector('.sidebar__search-input');
+    if (input instanceof HTMLInputElement) {
+        return input.value;
+    }
+    return '';
+}
+
+function hideSearch(): void {
+    document.querySelector('.app')?.classList.remove('-searching');
 }
 
 function renderSidebar(sidebar$: Observable<SidebarViewModel>, currentPage$: Observable<PageViewModel>): HTMLElement {
@@ -269,34 +209,39 @@ function renderSidebar(sidebar$: Observable<SidebarViewModel>, currentPage$: Obs
     $search.addEventListener('focus', () => {
         document.querySelector('.app')?.classList.add('-searching');
     });
-    document.addEventListener('mouseup', (event) => {
-        if (event.target !== $search && window.getSelection()?.isCollapsed) {
-            document.querySelector('.app')?.classList.remove('-searching');
+    document.addEventListener('click', (event) => {
+        if (event.target instanceof HTMLElement) {
+            if (event.target === $search || event.target.closest('.search') !== null) {
+                return;
+            }
         }
+        hideSearch();
     });
 
     const $results = document.createElement('ul');
     $results.classList.add('sidebar__list', 'sidebar__list--root');
 
     sidebar$.subscribe((sidebar) => {
-        const $container = document.createDocumentFragment();
-        for (const tree of sidebar.trees) {
-            $container.appendChild(renderTree(tree));
+        const $fragment = document.createDocumentFragment();
+        for (const page of sidebar.pages) {
+            const $link = document.createElement('a');
+            $link.classList.add('sidebar__link');
+            $link.setAttribute('href', '/#/' + page.filename);
+            $link.innerHTML = page.title;
+
+            const $item = document.createElement('li');
+            $item.classList.add('sidebar__item');
+            $item.appendChild($link);
+
+            $fragment.appendChild($item);
         }
         $results.innerHTML = '';
-        $results.appendChild($container);
+        $results.appendChild($fragment);
     });
 
     currentPage$.subscribe((page) => {
         $results.querySelector('.active')?.classList.remove('active');
-        const activeItem = $results.querySelector('a[href="/#/' + page.filename + '"]');
-        if (activeItem) {
-            activeItem.classList.add('active');
-            let parent: Element | null | undefined = activeItem;
-            while ((parent = parent.parentElement?.closest('.sidebar__item'))) {
-                parent.classList.add('sidebar__item--open');
-            }
-        }
+        $results.querySelector('a[href="/#/' + page.filename + '"]')?.classList.add('active');
     });
 
     $form.appendChild($search);

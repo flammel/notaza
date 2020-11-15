@@ -1,58 +1,64 @@
-import { Bookmark, Page, Tweet } from './Page';
-import { notUndefined } from './util';
+import { Page } from './model';
+import { Bookmark, Tweet } from './model';
+import { Store } from './store';
 
-interface SearchResult {
+export function containsReference(str: string, page: Page): boolean {
+    return (
+        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
+        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase().slice(0, -3) + ')') ||
+        str.toLocaleLowerCase().includes('#' + page.filename.toLocaleLowerCase().slice(0, -3)) ||
+        str.toLocaleLowerCase().includes('[[' + page.title.toLocaleLowerCase() + ']]')
+    );
+}
+
+interface PageResult {
+    type: 'page';
     page: Page;
-    matches: string[];
-    titleMatch: boolean;
 }
-
-function searchInPage(page: Page, query: string): SearchResult | undefined {
-    if (query === '') {
-        return {
-            page,
-            matches: [],
-            titleMatch: false,
-        };
-    }
-    const bodyMatches = page.body.toLowerCase().split(query.toLowerCase());
-    const titleMatch = page.title.toLowerCase().includes(query.toLowerCase());
-    if (bodyMatches.length > 1 || titleMatch) {
-        return {
-            page,
-            matches: [],
-            titleMatch,
-        };
-    }
+interface TweetResult {
+    type: 'tweet';
+    tweet: Tweet;
 }
-
-function compareResults(a: SearchResult, b: SearchResult): number {
-    if (a.titleMatch && !b.titleMatch) {
-        return -1;
-    }
-    if (!a.titleMatch && b.titleMatch) {
-        return 1;
-    }
-    if (a.matches.length > 0 || b.matches.length > 0) {
-        return b.matches.length - a.matches.length;
-    }
-    const aIsDate = a.page.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
-    const bIsDate = b.page.title.match(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
-    if (aIsDate && bIsDate) {
-        return b.page.title.localeCompare(a.page.title);
-    } else if (aIsDate && !bIsDate) {
-        return -1;
-    } else if (!aIsDate && bIsDate) {
-        return 1;
-    } else {
-        return a.page.title.localeCompare(b.page.title);
-    }
+interface BookmarkResult {
+    type: 'bookmark';
+    bookmark: Bookmark;
 }
+type SearchResult = PageResult | TweetResult | BookmarkResult;
 
-export function getSearchResults(pages: Page[], query: string): Page[] {
-    return pages
-        .map((page) => searchInPage(page, query))
-        .filter(notUndefined)
-        .sort(compareResults)
-        .map((result) => result.page);
+export function search(store: Store, query: string): SearchResult[] {
+    query = query.toLowerCase().trim();
+    if (query.length < 2) {
+        return [];
+    }
+    const pageResults: SearchResult[] = store.pages
+        .filter((page) => page.title.toLowerCase().includes(query) || page.body.toLowerCase().includes(query))
+        .map((page) => ({
+            type: 'page',
+            page: page,
+        }));
+    const bookmarkResults: SearchResult[] = store.bookmarks
+        .filter(
+            (bookmark) =>
+                bookmark.url.toLowerCase().includes(query) ||
+                bookmark.title.toLowerCase().includes(query) ||
+                bookmark.description.toLowerCase().includes(query) ||
+                bookmark.tags.includes(query),
+        )
+        .map((bookmark) => ({
+            type: 'bookmark',
+            bookmark,
+        }));
+    const tweetResults: SearchResult[] = store.tweets
+        .filter(
+            (tweet) =>
+                tweet.url.toLowerCase().includes(query) ||
+                tweet.tweet.toLowerCase().includes(query) ||
+                tweet.notes.toLowerCase().includes(query) ||
+                tweet.tags.includes(query),
+        )
+        .map((tweet) => ({
+            type: 'tweet',
+            tweet,
+        }));
+    return [...pageResults, ...bookmarkResults, ...tweetResults];
 }
