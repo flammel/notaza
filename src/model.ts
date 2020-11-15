@@ -54,6 +54,26 @@ export function makePageFromFilename(filename: string): Page {
     };
 }
 
+export function searchInTweet(query: string): (tweet: Tweet) => boolean {
+    return (tweet: Tweet): boolean =>
+        tweet.url.toLowerCase().includes(query) ||
+        tweet.tweet.toLowerCase().includes(query) ||
+        tweet.notes.toLowerCase().includes(query) ||
+        tweet.tags.includes(query);
+}
+
+export function searchInBookmark(query: string): (bookmark: Bookmark) => boolean {
+    return (bookmark: Bookmark): boolean =>
+        bookmark.url.toLowerCase().includes(query) ||
+        bookmark.title.toLowerCase().includes(query) ||
+        bookmark.description.toLowerCase().includes(query) ||
+        bookmark.tags.includes(query);
+}
+
+export function searchInPage(query: string): (page: Page) => boolean {
+    return (page: Page): boolean => page.title.toLowerCase().includes(query) || page.body.toLowerCase().includes(query);
+}
+
 function parseFrontMatter(frontMatter: string): FrontMatter {
     return new Map(
         frontMatter

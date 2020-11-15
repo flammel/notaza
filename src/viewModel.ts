@@ -1,6 +1,5 @@
 import { notazamd } from './markdown';
-import { Bookmark, makePageFromFilename, Page, Tweet } from './model';
-import { search } from './search';
+import { Bookmark, makePageFromFilename, Page, searchInBookmark, searchInPage, searchInTweet, Tweet } from './model';
 import { Store } from './store';
 
 export interface BookmarkViewModel {
@@ -72,7 +71,10 @@ export function pageViewModel(store: Store, filename: string, editLink: (page: P
             .map((other) => ({
                 title: other.title,
                 filename: other.filename,
-                content: getFilteredContent(other, (element) => element.querySelector(`a[href='/#/${page.id}.md']`) !== null),
+                content: getFilteredContent(
+                    other,
+                    (element) => element.querySelector(`a[href='/#/${page.id}.md']`) !== null,
+                ),
             })),
     };
 }
@@ -123,32 +125,32 @@ function getFilteredContent(page: Page, filter: (element: HTMLElement) => boolea
 }
 
 export function searchViewModel(store: Store, query: string): SearchViewModel {
+    query = query.toLowerCase().trim();
+    if (query.length < 2) {
+        return { query, results: [] };
+    }
+    const pageResults: SearchResult[] = store.pages.filter(searchInPage(query)).map((page) => ({
+        type: 'page',
+        page: {
+            filename: page.filename,
+            title: page.title,
+            content: getFilteredContent(page, (element) =>
+                element.innerText.toLowerCase().includes(query.toLowerCase()),
+            ),
+        },
+    }));
+    const bookmarkResults: SearchResult[] = store.bookmarks.filter(searchInBookmark(query)).map((bookmark) => ({
+        type: 'bookmark',
+        bookmark: bookmarkViewModel(bookmark),
+    }));
+    const tweetResults: SearchResult[] = store.tweets.filter(searchInTweet(query)).map((tweet) => ({
+        type: 'tweet',
+        tweet: tweetViewModel(tweet),
+    }));
+
     return {
         query: query,
-        results: search(store, query).map((result) => {
-            if (result.type === 'bookmark') {
-                return {
-                    type: 'bookmark',
-                    bookmark: bookmarkViewModel(result.bookmark),
-                };
-            } else if (result.type === 'tweet') {
-                return {
-                    type: 'tweet',
-                    tweet: tweetViewModel(result.tweet),
-                };
-            } else {
-                return {
-                    type: 'page',
-                    page: {
-                        filename: result.page.filename,
-                        title: result.page.title,
-                        content: getFilteredContent(result.page, (element) =>
-                            element.innerText.toLowerCase().includes(query.toLowerCase()),
-                        ),
-                    },
-                };
-            }
-        }),
+        results: [...pageResults, ...bookmarkResults, ...tweetResults],
     };
 }
 
