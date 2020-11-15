@@ -146,7 +146,7 @@ const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).
 const cache = new Map<string, string>();
 export function notazamd(): { render: (markdown: string) => string } {
     return {
-        render: (markdown) => {
+        render: (markdown): string => {
             const cached = cache.get(markdown);
             if (cached !== undefined) {
                 return cached;

@@ -16,3 +16,11 @@ export function base64DecodeUnicode(str: string): string {
             .join(''),
     );
 }
+
+export function debounce(fn: (param1: string) => void, delay: number): (param1: string) => void {
+    let timeoutID: number;
+    return (param1: string): void => {
+        clearTimeout(timeoutID);
+        timeoutID = window.setTimeout(() => fn(param1), delay);
+    };
+}

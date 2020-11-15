@@ -37,7 +37,7 @@ function advance(context: Context): Context {
 }
 
 function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
-    return (context) => {
+    return (context): Result<T[]> => {
         const values: T[] = [];
         let currentContext = context;
         for (const parser of parsers) {
@@ -54,7 +54,7 @@ function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
 }
 
 function many<T>(parser: Parser<T>): Parser<T[]> {
-    return (context) => {
+    return (context): Result<T[]> => {
         const values: T[] = [];
         let currentContext = context;
         let result = parser(currentContext);
@@ -68,7 +68,7 @@ function many<T>(parser: Parser<T>): Parser<T[]> {
 }
 
 function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
-    return (context) => {
+    return (context): Result<T> => {
         for (const parser of parsers) {
             const result = parser(context);
             if (result.success) {
@@ -80,7 +80,7 @@ function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
 }
 
 function optional<T>(parser: Parser<T>): Parser<T | null> {
-    return (context) => {
+    return (context): Result<T | null> => {
         const result = parser(context);
         if (result.success) {
             return success(result.context, result.value);
@@ -90,7 +90,7 @@ function optional<T>(parser: Parser<T>): Parser<T | null> {
 }
 
 function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
-    return (context) => {
+    return (context): Result<T> => {
         const result = parser(context);
         if (result.success) {
             return success(result.context, fn(result.value));
@@ -101,7 +101,7 @@ function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
 }
 
 function tableHeader(tableName: string): Parser<null> {
-    return (context) => {
+    return (context): Result<null> => {
         const line = current(context);
         if (typeof line === 'string') {
             const match = line.match(new RegExp('\\[\\[(' + tableName + ')\\]\\]'));
@@ -114,7 +114,7 @@ function tableHeader(tableName: string): Parser<null> {
 }
 
 function dateKeyValue(key: string): Parser<string> {
-    return (context) => {
+    return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
             const match = line.match(
@@ -129,7 +129,7 @@ function dateKeyValue(key: string): Parser<string> {
 }
 
 function singleLineStringKeyValue(key: string): Parser<string> {
-    return (context) => {
+    return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
             const singleMatch = line.match(new RegExp('^' + key + " = (?:'''(.*)'''|'([^']*)'|\"([^\"]*)\")$"));
@@ -142,7 +142,7 @@ function singleLineStringKeyValue(key: string): Parser<string> {
 }
 
 function multiLineStringKeyValue(key: string): Parser<string> {
-    return (context) => {
+    return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
             const match = line.match(new RegExp('^' + key + " = '''$"));
@@ -164,7 +164,7 @@ function multiLineStringKeyValue(key: string): Parser<string> {
 }
 
 function emptyLine(): Parser<null> {
-    return (context) => {
+    return (context): Result<null> => {
         const line = current(context);
         if (line === '') {
             return success(advance(context), null);
@@ -184,7 +184,7 @@ const tweetsParser = many(
             oneOf(singleLineStringKeyValue('notes'), multiLineStringKeyValue('notes')),
             optional(emptyLine()),
         ]),
-        ([_header, url, date, tags, tweet, notes]) => {
+        ([, url, date, tags, tweet, notes]) => {
             if (url !== null && date !== null && tags !== null && tweet !== null && notes !== null) {
                 return {
                     url,
@@ -212,7 +212,7 @@ const bookmarksParser = many(
             oneOf(singleLineStringKeyValue('description'), multiLineStringKeyValue('description')),
             optional(emptyLine()),
         ]),
-        ([_header, id, date, url, title, tags, description]) => {
+        ([, id, date, url, title, tags, description]) => {
             if (
                 id !== null &&
                 date !== null &&

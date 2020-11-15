@@ -1,13 +1,7 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
-import {
-    BacklinkViewModel,
-    BookmarkViewModel,
-    PageViewModel,
-    SearchViewModel,
-    SidebarViewModel,
-    TweetViewModel,
-} from './viewModel';
+import { BacklinkViewModel, BookmarkViewModel, PageViewModel, SearchViewModel, TweetViewModel } from './viewModel';
+import { debounce } from './util';
 
 function renderBookmark(bookmark: BookmarkViewModel): Node {
     const $container = document.createElement('div');
@@ -43,6 +37,10 @@ function renderBookmark(bookmark: BookmarkViewModel): Node {
 
 function renderBookmarks(bookmarks: BookmarkViewModel[]): Node {
     const $fragment = document.createDocumentFragment();
+
+    if (bookmarks.length < 1) {
+        return $fragment;
+    }
 
     const $headline = document.createElement('h2');
     $headline.innerText = 'Bookmarks';
@@ -97,6 +95,10 @@ function renderTweet(tweet: TweetViewModel): Node {
 function renderTweets(tweets: TweetViewModel[]): Node {
     const $fragment = document.createDocumentFragment();
 
+    if (tweets.length < 1) {
+        return $fragment;
+    }
+
     const $headline = document.createElement('h2');
     $headline.innerText = 'Tweets';
     $fragment.appendChild($headline);
@@ -117,16 +119,18 @@ function renderBacklink(pageWithBacklinks: BacklinkViewModel): Node {
     $link.innerText = pageWithBacklinks.title;
     $title.appendChild($link);
     $container.appendChild($title);
-    for (const block of pageWithBacklinks.blocks) {
-        const $block = document.createElement('div');
-        $block.innerHTML = block.content;
-        $container.appendChild($block);
-    }
+    const $block = document.createElement('div');
+    $block.innerHTML = pageWithBacklinks.content;
+    $container.appendChild($block);
     return $container;
 }
 
 function renderBacklinks(backlinks: BacklinkViewModel[]): Node {
     const $fragment = document.createDocumentFragment();
+
+    if (backlinks.length < 1) {
+        return $fragment;
+    }
 
     const $headline = document.createElement('h2');
     $headline.innerText = 'References';
@@ -150,19 +154,14 @@ function renderPage(page: PageViewModel): HTMLElement {
         $page.insertBefore($title, $page.firstChild);
     }
 
-    const $editLink = document.createElement('a');
-    $editLink.setAttribute('href', page.editLink);
-    $editLink.setAttribute('target', '_blank');
-    $editLink.setAttribute('rel', 'noreferrer noopener');
-    $editLink.innerText = 'edit';
-    $page.appendChild($editLink);
-
     $page.appendChild(renderBookmarks(page.bookmarks));
     $page.appendChild(renderTweets(page.tweets));
     $page.appendChild(renderBacklinks(page.backlinks));
 
     return $page;
 }
+
+const editLinkId = 'edit-link';
 
 function renderContent(page$: Observable<PageViewModel>): HTMLElement {
     const $content = document.createElement('div');
@@ -173,6 +172,7 @@ function renderContent(page$: Observable<PageViewModel>): HTMLElement {
         $content.innerHTML = '';
         $content.appendChild(renderPage(page));
         document.title = 'KB | ' + page.title;
+        document.getElementById(editLinkId)?.setAttribute('href', page.editLink);
         hideSearch();
         mark.mark(getQuery());
     });
@@ -192,65 +192,6 @@ function hideSearch(): void {
     document.querySelector('.app')?.classList.remove('-searching');
 }
 
-function renderSidebar(sidebar$: Observable<SidebarViewModel>, currentPage$: Observable<PageViewModel>): HTMLElement {
-    const $sidebar = document.createElement('div');
-    $sidebar.classList.add('sidebar');
-
-    const $form = document.createElement('form');
-    $form.classList.add('sidebar__header');
-    $form.addEventListener('submit', (event) => event.preventDefault());
-
-    const $search = document.createElement('input');
-    $search.classList.add('sidebar__search-input');
-    $search.setAttribute('placeholder', 'Search');
-    $search.addEventListener('input', () => {
-        window.dispatchEvent(new CustomEvent('queryChange', { detail: $search.value }));
-    });
-    $search.addEventListener('focus', () => {
-        document.querySelector('.app')?.classList.add('-searching');
-    });
-    document.addEventListener('click', (event) => {
-        if (event.target instanceof HTMLElement) {
-            if (event.target === $search || event.target.closest('.search') !== null) {
-                return;
-            }
-        }
-        hideSearch();
-    });
-
-    const $results = document.createElement('ul');
-    $results.classList.add('sidebar__list', 'sidebar__list--root');
-
-    sidebar$.subscribe((sidebar) => {
-        const $fragment = document.createDocumentFragment();
-        for (const page of sidebar.pages) {
-            const $link = document.createElement('a');
-            $link.classList.add('sidebar__link');
-            $link.setAttribute('href', '/#/' + page.filename);
-            $link.innerHTML = page.title;
-
-            const $item = document.createElement('li');
-            $item.classList.add('sidebar__item');
-            $item.appendChild($link);
-
-            $fragment.appendChild($item);
-        }
-        $results.innerHTML = '';
-        $results.appendChild($fragment);
-    });
-
-    currentPage$.subscribe((page) => {
-        $results.querySelector('.active')?.classList.remove('active');
-        $results.querySelector('a[href="/#/' + page.filename + '"]')?.classList.add('active');
-    });
-
-    $form.appendChild($search);
-    $sidebar.appendChild($form);
-    $sidebar.appendChild($results);
-
-    return $sidebar;
-}
-
 function renderSearch(search$: Observable<SearchViewModel>): Node {
     const $search = document.createElement('div');
     $search.classList.add('search');
@@ -263,7 +204,7 @@ function renderSearch(search$: Observable<SearchViewModel>): Node {
     $results.classList.add('results');
     $search.appendChild($results);
 
-    const mark = new Mark($search);
+    const mark = new Mark($results);
 
     search$.subscribe(({ results, query }) => {
         const $fragment = document.createDocumentFragment();
@@ -287,15 +228,59 @@ function renderSearch(search$: Observable<SearchViewModel>): Node {
     return $search;
 }
 
+const debouncedQueryChangeHandler = debounce((query: string) => {
+    window.dispatchEvent(new CustomEvent('queryChange', { detail: query }));
+}, 50);
+
+function renderHeader(): HTMLElement {
+    const $header = document.createElement('div');
+    $header.classList.add('header');
+
+    const $home = document.createElement('a');
+    $home.setAttribute('href', '/#/');
+    $home.innerText = '🏠';
+    $header.appendChild($home);
+
+    const $index = document.createElement('a');
+    $index.setAttribute('href', '/#/_index.md');
+    $index.innerText = '📁';
+    $header.appendChild($index);
+
+    const $edit = document.createElement('a');
+    $edit.id = editLinkId;
+    $edit.innerText = '✏️';
+    $edit.setAttribute('target', '_blank');
+    $edit.setAttribute('rel', 'noreferrer noopener');
+    $header.appendChild($edit);
+
+    const $search = document.createElement('input');
+    $search.setAttribute('placeholder', 'Search');
+    $header.appendChild($search);
+
+    $search.addEventListener('input', () => debouncedQueryChangeHandler($search.value));
+    $search.addEventListener('focus', () => {
+        document.querySelector('.app')?.classList.add('-searching');
+    });
+    document.addEventListener('click', (event) => {
+        if (event.target instanceof HTMLElement) {
+            if (event.target === $search || event.target.closest('.search') !== null) {
+                return;
+            }
+        }
+        hideSearch();
+    });
+
+    return $header;
+}
+
 export function mountView(
     $container: HTMLElement,
     currentPage$: Observable<PageViewModel>,
-    sidebar$: Observable<SidebarViewModel>,
     search$: Observable<SearchViewModel>,
 ): void {
     const $app = document.createElement('div');
     $app.classList.add('app');
-    $app.appendChild(renderSidebar(sidebar$, currentPage$));
+    $app.appendChild(renderHeader());
     $app.appendChild(renderContent(currentPage$));
     $app.appendChild(renderSearch(search$));
     $container.appendChild($app);

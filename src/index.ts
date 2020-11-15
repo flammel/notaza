@@ -4,7 +4,7 @@ import { Config, loadConfig } from './config';
 import { observable } from './observable';
 import { Page } from './model';
 import { initStore } from './store';
-import { PageViewModel, SearchViewModel, SidebarViewModel, pageViewModel, searchViewModel } from './viewModel';
+import { PageViewModel, SearchViewModel, pageViewModel, searchViewModel } from './viewModel';
 
 import './index.scss';
 
@@ -23,16 +23,17 @@ async function init(): Promise<void> {
     const store = initStore(apiData);
 
     const currentPage$ = observable<PageViewModel>();
-    const sidebar$ = observable<SidebarViewModel>();
     const search$ = observable<SearchViewModel>();
 
-    mountView(document.body, currentPage$, sidebar$, search$);
-    const updateCurrentPage = (url: string) => {
+    mountView(document.body, currentPage$, search$);
+    const updateCurrentPage = (url: string): void => {
         if (url !== '') {
             currentPage$.next(pageViewModel(store, url, (page) => editLink(page, config)));
+        } else {
+            window.location.hash = '/index.md';
         }
     };
-    const updateSearch = (query: string) => {
+    const updateSearch = (query: string): void => {
         search$.next(searchViewModel(store, query));
     };
     window.addEventListener('hashchange', () => {
@@ -46,6 +47,5 @@ async function init(): Promise<void> {
     });
 
     updateCurrentPage(window.location.hash.substring(2));
-    sidebar$.next({ pages: store.pages.sort((a, b) => a.title.localeCompare(b.title)) });
 }
 init();

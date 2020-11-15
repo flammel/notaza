@@ -1,6 +1,6 @@
 import { notazamd } from './markdown';
 import { Bookmark, makePageFromFilename, Page, Tweet } from './model';
-import { containsReference, search } from './search';
+import { search } from './search';
 import { Store } from './store';
 
 export interface BookmarkViewModel {
@@ -23,7 +23,7 @@ export interface TweetViewModel {
 export interface BacklinkViewModel {
     filename: string;
     title: string;
-    blocks: Array<{ content: string }>;
+    content: string;
 }
 
 export interface PageViewModel {
@@ -34,10 +34,6 @@ export interface PageViewModel {
     bookmarks: BookmarkViewModel[];
     tweets: TweetViewModel[];
     backlinks: BacklinkViewModel[];
-}
-
-export interface SidebarViewModel {
-    pages: Page[];
 }
 
 export type SearchResult =
@@ -51,6 +47,9 @@ export interface SearchViewModel {
 }
 
 export function pageViewModel(store: Store, filename: string, editLink: (page: Page) => string): PageViewModel {
+    if (filename === '_index.md') {
+        return makeIndexPage(store.pages);
+    }
     const page = store.pages.find((page) => page.filename === filename) ?? makePageFromFilename(filename);
     return {
         filename: page.filename,
@@ -73,12 +72,40 @@ export function pageViewModel(store: Store, filename: string, editLink: (page: P
             .map((other) => ({
                 title: other.title,
                 filename: other.filename,
-                blocks: getBlocks(other, (element) => element.querySelector(`a[href='/#/${page.id}.md']`) !== null),
+                content: getFilteredContent(other, (element) => element.querySelector(`a[href='/#/${page.id}.md']`) !== null),
             })),
     };
 }
 
-function getBlocks(page: Page, filter: (element: HTMLElement) => boolean): BacklinkViewModel['blocks'] {
+function containsReference(str: string, page: Page): boolean {
+    return (
+        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
+        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase().slice(0, -3) + ')') ||
+        str.toLocaleLowerCase().includes('#' + page.filename.toLocaleLowerCase().slice(0, -3)) ||
+        str.toLocaleLowerCase().includes('[[' + page.title.toLocaleLowerCase() + ']]')
+    );
+}
+
+function makeIndexPage(pages: Page[]): PageViewModel {
+    const content = [
+        '<ul>',
+        ...pages
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((page) => `<li><a class="internal" href="/#/${page.filename}">${page.title}</a></li>`),
+        '</ul>',
+    ];
+    return {
+        filename: '_index.md',
+        title: 'Index',
+        editLink: '',
+        html: content.join(''),
+        bookmarks: [],
+        tweets: [],
+        backlinks: [],
+    };
+}
+
+function getFilteredContent(page: Page, filter: (element: HTMLElement) => boolean): string {
     const doc = new DOMParser().parseFromString(notazamd().render(page.body), 'text/html');
     const ul = doc.createElement('ul');
     for (const $el of doc.querySelectorAll('body > ul > li, body > p')) {
@@ -92,7 +119,7 @@ function getBlocks(page: Page, filter: (element: HTMLElement) => boolean): Backl
             }
         }
     }
-    return [{ content: ul.outerHTML }];
+    return ul.outerHTML;
 }
 
 export function searchViewModel(store: Store, query: string): SearchViewModel {
@@ -115,7 +142,7 @@ export function searchViewModel(store: Store, query: string): SearchViewModel {
                     page: {
                         filename: result.page.filename,
                         title: result.page.title,
-                        blocks: getBlocks(result.page, (element) =>
+                        content: getFilteredContent(result.page, (element) =>
                             element.innerText.toLowerCase().includes(query.toLowerCase()),
                         ),
                     },

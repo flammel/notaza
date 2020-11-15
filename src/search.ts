@@ -2,15 +2,6 @@ import { Page } from './model';
 import { Bookmark, Tweet } from './model';
 import { Store } from './store';
 
-export function containsReference(str: string, page: Page): boolean {
-    return (
-        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
-        str.toLocaleLowerCase().includes('](./' + page.filename.toLocaleLowerCase().slice(0, -3) + ')') ||
-        str.toLocaleLowerCase().includes('#' + page.filename.toLocaleLowerCase().slice(0, -3)) ||
-        str.toLocaleLowerCase().includes('[[' + page.title.toLocaleLowerCase() + ']]')
-    );
-}
-
 interface PageResult {
     type: 'page';
     page: Page;

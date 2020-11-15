@@ -23,79 +23,82 @@ html {
 
 body {
     margin: 0;
+    background: #eee;
+    overflow-y: scroll;
 }
 
 .app {
-    display: flex;
-    flex-direction: row;
     width: 100%;
-    max-width: 80rem;
+    max-width: 50rem;
     margin: 0 auto;
+    padding: 0.5rem;
     box-sizing: border-box;
+
+    .content {
+        display: block;
+    }
+
+    .search {
+        display: none;
+    }
+
+    &.-searching {
+        .content {
+            display: none;
+        }
+        .search {
+            display: block;
+        }
+    }
 }
 
-.sidebar {
-    width: 20rem;
-    height: 100vh;
+.header {
+    margin-bottom: 0.5rem;
     display: flex;
-    flex-direction: column;
-    border-right: 1px solid $border-color;
+    flex-direction: row;
+    border-radius: 3px;
+    overflow: hidden;
+    box-sizing: border-box;
 
-    &__header {
-        border-bottom: 1px solid $border-color;
-        padding: 0.5rem;
+    a {
+        padding: 0.5rem 1rem;
+        background: #7ea8e2;
+        text-decoration: none !important;
     }
 
-    &__search-input {
-        @include font;
-        width: 100%;
+    a + a {
+        border-left: 1px solid #a7c2e8;
+    }
+
+    input {
+        flex-grow: 1;
         border: none;
-        padding: 0.5rem;
-        border: 1px solid transparent;
-        border-radius: 0;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        border-color: #fff;
+        border-width: 1px 1px 1px 0;
+        border-top-right-radius: 3px;
+        border-bottom-right-radius: 3px;
+        border-style: solid;
+        min-width: 0;
+        @include font;
 
         &:focus {
-            box-shadow: 0 0 5px $primary-color;
-            border: 1px solid $primary-color;
             outline: none;
-        }
-    }
-
-    &__list {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 0 1rem;
-        overflow-y: auto;
-        width: 100%;
-
-        &--root {
-            margin: 0;
-        }
-    }
-
-    &__link {
-        display: block;
-        padding: 0.5rem 1rem;
-        text-decoration: none;
-        color: $font-color;
-
-        &:hover {
-            text-decoration: underline;
-        }
-
-        &.active {
-            background-color: lighten($primary-color, $amount: 40%);
+            border-color: #7ea8e2;
         }
     }
 }
 
 .content,
 .search {
-    height: 100vh;
-    overflow-y: auto;
-    flex-grow: 1;
-    width: 50rem;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0 1rem;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 3px;
+    overflow-x: auto;
 
     a,
     a:visited {
@@ -178,23 +181,5 @@ body {
     }
     &__notes p {
         margin: 0 0 0.5rem 0;
-    }
-}
-
-.app {
-    .content {
-        display: block;
-    }
-    .search {
-        display: none;
-    }
-
-    &.-searching {
-        .content {
-            display: none;
-        }
-        .search {
-            display: block;
-        }
     }
 }
