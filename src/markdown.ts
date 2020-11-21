@@ -1,6 +1,9 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
+import { parseBookmarks, parseTweets } from './toml';
+import { tweetHtml, bookmarkHtml } from './view';
+import { tweetViewModel, bookmarkViewModel } from './viewModel';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -142,7 +145,35 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
         }</a>`;
 };
 
-const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks);
+function parseAndRenderTweet(toml: string): string {
+    return parseTweets(toml).map((tweet) => tweetHtml(tweetViewModel(tweet))).join('');
+}
+
+function parseAndRenderBookmark(toml: string): string {
+    return parseBookmarks(toml).map((bookmark) => bookmarkHtml(bookmarkViewModel(bookmark))).join('');
+}
+
+const tweetsAndBookmarks: MarkdownIt.PluginSimple = (md): void => {
+    const originalFenceRenderer = md.renderer.rules.fence;
+    md.renderer.rules.fence = (tokens, idx, options, env, self): string => {
+        const token = tokens[idx];
+        if (token.info.trim() === 'tweet') {
+            return parseAndRenderTweet(token.content);
+        } else if (token.info.trim() === 'bookmark') {
+            return parseAndRenderBookmark(token.content);
+        } else if (originalFenceRenderer) {
+            return originalFenceRenderer(tokens, idx, options, env, self);
+        } else {
+            return self.renderToken(tokens, idx, options);
+        }
+    };
+    md.renderer.rules.wikilink = (tokens, index): string =>
+        `<a class="internal" href="/#/${tokens[index].content.toLowerCase().replace(' ', '-')}.md">${
+            tokens[index].content
+        }</a>`;
+};
+
+const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks).use(tweetsAndBookmarks);
 const cache = new Map<string, string>();
 export function notazamd(): { render: (markdown: string) => string } {
     return {

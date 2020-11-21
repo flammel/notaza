@@ -154,7 +154,7 @@ export function searchViewModel(store: Store, query: string): SearchViewModel {
     };
 }
 
-function bookmarkViewModel(bookmark: Bookmark): BookmarkViewModel {
+export function bookmarkViewModel(bookmark: Bookmark): BookmarkViewModel {
     return {
         title: bookmark.title,
         tags: bookmark.tags,
@@ -164,18 +164,13 @@ function bookmarkViewModel(bookmark: Bookmark): BookmarkViewModel {
     };
 }
 
-function tweetViewModel(tweet: Tweet): TweetViewModel {
+export function tweetViewModel(tweet: Tweet): TweetViewModel {
     return {
         url: tweet.url,
-        userHandle: userHandle(tweet),
+        userHandle: tweet.userHandle,
         date: tweet.date,
         tags: tweet.tags,
         tweet: tweet.tweet,
         notesHtml: notazamd().render(tweet.notes),
     };
-}
-
-function userHandle(tweet: Tweet): string {
-    const match = tweet.url.match(/^https:\/\/twitter\.com\/([^\/]+)\/.*$/);
-    return match ? match[1] : tweet.url;
 }

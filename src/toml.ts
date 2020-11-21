@@ -192,6 +192,7 @@ const tweetsParser = many(
                     tags: tags.split(' ').map((tag) => tag.replace('#', '')),
                     tweet,
                     notes,
+                    userHandle: userHandle(url)
                 };
             } else {
                 return undefined;
@@ -199,6 +200,11 @@ const tweetsParser = many(
         },
     ),
 );
+
+function userHandle(url: string): string {
+    const match = url.match(/^https:\/\/twitter\.com\/([^\/]+)\/.*$/);
+    return match ? match[1] : url;
+}
 
 const bookmarksParser = many(
     map(

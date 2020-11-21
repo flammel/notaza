@@ -4,10 +4,10 @@ import { BacklinkViewModel, BookmarkViewModel, PageViewModel, SearchViewModel, T
 import { debounce } from './util';
 
 function tagsHtml(tags: string[]): string {
-    return tags.map((tag) => `<a href="#/${tag}.md">${tag}</a>`).join(' ');
+    return tags.map((tag) => `<a href="#/${tag}.md" class="tag">${tag}</a>`).join(' ');
 }
 
-function bookmarkHtml(bookmark: BookmarkViewModel): string {
+export function bookmarkHtml(bookmark: BookmarkViewModel): string {
     return `
         <div class="bookmark">
             <h3 class="bookmark__title">
@@ -20,34 +20,16 @@ function bookmarkHtml(bookmark: BookmarkViewModel): string {
     `;
 }
 
-function bookmarksHtml(bookmarks: BookmarkViewModel[]): string {
-    return `
-        <div class="bookmarks">
-            <h2>Bookmarks</h2>
-            ${bookmarks.map((bookmark) => bookmarkHtml(bookmark)).join('')}
-        </div>
-    `;
-}
-
-function tweetHtml(tweet: TweetViewModel): string {
+export function tweetHtml(tweet: TweetViewModel): string {
     return `
         <div class="tweet">
             <div class="tweet__header">
                 <a href="${tweet.url}" target="_blank" rel="noreferrer noopener">@${tweet.userHandle}</a>
                 <span class="tweet__date">on ${tweet.date}</span>
+                <div class="tweet__tags">${tagsHtml(tweet.tags)}</div>
             </div>
-            <div class="tweet__tags">${tagsHtml(tweet.tags)}</div>
             <div class="tweet__tweet">${tweet.tweet.replace(/\n/g, '<br>')}</div>
-            <div class="tweet__notes">${tweet.notesHtml}</div>
-        </div>
-    `;
-}
-
-function tweetsHtml(tweets: TweetViewModel[]): string {
-    return `
-        <div class="tweets">
-            <h2>Tweets</h2>
-            ${tweets.map((tweet) => tweetHtml(tweet)).join('')}
+            <div class="tweet__notes ${tweet.notesHtml.trim() === "" ? "hidden" : ""}">${tweet.notesHtml}</div>
         </div>
     `;
 }
@@ -139,8 +121,8 @@ export function mountView(
     currentPage$.subscribe((page) => {
         $content.innerHTML = `
             <div class="page">${page.html}</div>
-            ${page.bookmarks.length > 0 ? bookmarksHtml(page.bookmarks) : ''}
-            ${page.tweets.length > 0 ? tweetsHtml(page.tweets) : ''}
+            ${page.bookmarks.map((bookmark) => bookmarkHtml(bookmark)).join('')}
+            ${page.tweets.map((tweet) => tweetHtml(tweet)).join('')}
             ${page.backlinks.length > 0 ? backlinksHtml(page.backlinks) : ''}
         `;
         if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {

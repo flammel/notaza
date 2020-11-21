@@ -20,6 +20,7 @@ export interface Bookmark {
 
 export interface Tweet {
     readonly url: string;
+    readonly userHandle: string;
     readonly date: string;
     readonly tags: string[];
     readonly tweet: string;

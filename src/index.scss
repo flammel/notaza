@@ -169,21 +169,20 @@ body {
 }
 
 .bookmark {
-    padding: 1rem 0;
-    border-bottom: 1px solid $border-color;
+    border: 1px solid $border-color;
+    border-radius: 3px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
 
     &__title {
         margin: 0;
     }
+    &__tags {
+        padding: 0.5rem 0;
+    }
     &__url {
         font-size: 0.875rem;
         color: $font-color-light;
-    }
-    &__tags {
-        padding: 0.5rem 0;
-        a {
-            margin-right: 0.5rem;
-        }
     }
     &__description p {
         margin: 0 0 0.5rem 0;
@@ -191,24 +190,48 @@ body {
 }
 
 .tweet {
-    padding: 1rem 0;
-    border-bottom: 1px solid $border-color;
+    border: 1px solid $border-color;
+    border-radius: 3px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
 
-    &__url {
-        font-size: 0.875rem;
-        color: $font-color-light;
+    &__header {
+        display: flex;
+        flex-direction: column;
+        a:not(.tag) {
+            font-size: 1.17rem;
+            font-weight: bold;
+        }
     }
     &__tags {
         padding: 0.5rem 0;
-        a {
-            margin-right: 0.5rem;
+    }
+    &__date {
+        font-size: 0.875rem;
+        color: $font-color-light;
+    }
+    &__notes {
+        border-top: 1px solid $border-color;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        & > *:first-child {
+            margin-top: 0;
+        }
+        & > *:last-child {
+            margin-bottom: 0;
         }
     }
-    &__tweet {
-        border-left: 0.25rem solid $border-color;
-        padding-left: 0.5rem;
+}
+
+.tag {
+    margin-right: 0.5rem;
+    &::before {
+        content: "#";
+        color: $font-color-light;
+        letter-spacing: 2px;
     }
-    &__notes p {
-        margin: 0 0 0.5rem 0;
-    }
+}
+
+.hidden {
+    display: none;
 }
