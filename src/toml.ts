@@ -192,7 +192,7 @@ const tweetsParser = many(
                     tags: tags.split(' ').map((tag) => tag.replace('#', '')),
                     tweet,
                     notes,
-                    userHandle: userHandle(url)
+                    userHandle: userHandle(url),
                 };
             } else {
                 return undefined;

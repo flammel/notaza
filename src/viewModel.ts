@@ -1,3 +1,4 @@
+import Token from 'markdown-it/lib/token';
 import { notazamd } from './markdown';
 import { Bookmark, makePageFromFilename, Page, searchInBookmark, searchInPage, searchInTweet, Tweet } from './model';
 import { Store } from './store';
@@ -71,10 +72,7 @@ export function pageViewModel(store: Store, filename: string, editLink: (page: P
             .map((other) => ({
                 title: other.title,
                 filename: other.filename,
-                content: getFilteredContent(
-                    other,
-                    (element) => element.querySelector(`a[href='/#/${page.id}.md']`) !== null,
-                ),
+                content: getFilteredContent(other, (md) => containsReference(md, page)),
             })),
     };
 }
@@ -107,21 +105,44 @@ function makeIndexPage(pages: Page[]): PageViewModel {
     };
 }
 
-function getFilteredContent(page: Page, filter: (element: HTMLElement) => boolean): string {
-    const doc = new DOMParser().parseFromString(notazamd().render(page.body), 'text/html');
-    const ul = doc.createElement('ul');
-    for (const $el of doc.querySelectorAll('body > ul > li, body > p')) {
-        if ($el instanceof HTMLElement && filter($el)) {
-            if ($el instanceof HTMLLIElement && filter($el)) {
-                ul.appendChild($el);
-            } else if ($el instanceof HTMLParagraphElement) {
-                const li = doc.createElement('li');
-                li.appendChild($el);
-                ul.appendChild(li);
+interface Block {
+    tokens: Token[];
+}
+const cache = new Map<string, Block[]>();
+function getCachedBlocks(page: Page): Block[] {
+    const cached = cache.get(page.id);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const tokens = notazamd().parse(page.body);
+    let open = 0;
+    const blocks = [];
+    let block = [];
+    for (const token of tokens) {
+        if (token.type === 'list_item_open') {
+            open++;
+            if (open === 1) {
+                continue;
             }
         }
+        if (token.type === 'list_item_close') {
+            open--;
+            if (open === 0) {
+                blocks.push({ tokens: block });
+                block = [];
+                continue;
+            }
+        }
+        if (open > 0) {
+            block.push(token);
+        }
     }
-    return ul.outerHTML;
+    cache.set(page.id, blocks);
+    return blocks;
+}
+function getFilteredContent(page: Page, filter: (md: string) => boolean): string {
+    const blocks = getCachedBlocks(page).filter((block) => block.tokens.some((token) => filter(token.content)));
+    return `<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`;
 }
 
 export function searchViewModel(store: Store, query: string): SearchViewModel {
@@ -134,9 +155,7 @@ export function searchViewModel(store: Store, query: string): SearchViewModel {
         page: {
             filename: page.filename,
             title: page.title,
-            content: getFilteredContent(page, (element) =>
-                element.innerText.toLowerCase().includes(query.toLowerCase()),
-            ),
+            content: getFilteredContent(page, (md) => md.toLowerCase().includes(query.toLowerCase())),
         },
     }));
     const bookmarkResults: SearchResult[] = store.bookmarks.filter(searchInBookmark(query)).map((bookmark) => ({
@@ -150,7 +169,24 @@ export function searchViewModel(store: Store, query: string): SearchViewModel {
 
     return {
         query: query,
-        results: [...pageResults, ...bookmarkResults, ...tweetResults],
+        results: [...pageResults, ...bookmarkResults, ...tweetResults].sort(searchResultSort(query)),
+    };
+}
+
+function searchResultSort(query: string): (a: SearchResult, b: SearchResult) => number {
+    return (a: SearchResult, b: SearchResult): number => {
+        if (a.type === 'page' && b.type === 'page') {
+            const aIdx = a.page.title.toLowerCase().indexOf(query.toLowerCase());
+            const bIdx = b.page.title.toLowerCase().indexOf(query.toLowerCase());
+            return (aIdx < 0 ? 4096 : aIdx) - (bIdx < 0 ? 4096 : bIdx);
+        }
+        if (a.type === 'page') {
+            return -1;
+        }
+        if (b.type === 'page') {
+            return 1;
+        }
+        return 0;
     };
 }
 

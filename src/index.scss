@@ -151,7 +151,8 @@ body {
         font-size: 0.9rem;
     }
 
-    p code, li code {
+    p code,
+    li code {
         padding: 0.2rem 0.4rem;
         background: #f8f8f8;
         border-radius: 3px;
@@ -159,37 +160,7 @@ body {
     }
 }
 
-.reference {
-    border-bottom: 1px solid $border-color;
-    padding: 1rem 0;
-
-    h3 {
-        margin-top: 0;
-    }
-}
-
-.bookmark {
-    border: 1px solid $border-color;
-    border-radius: 3px;
-    padding: 0.5rem 1rem;
-    margin-bottom: 1rem;
-
-    &__title {
-        margin: 0;
-    }
-    &__tags {
-        padding: 0.5rem 0;
-    }
-    &__url {
-        font-size: 0.875rem;
-        color: $font-color-light;
-    }
-    &__description p {
-        margin: 0 0 0.5rem 0;
-    }
-}
-
-.tweet {
+.card {
     border: 1px solid $border-color;
     border-radius: 3px;
     padding: 0.5rem 1rem;
@@ -198,22 +169,24 @@ body {
     &__header {
         display: flex;
         flex-direction: column;
-        a:not(.tag) {
-            font-size: 1.17rem;
-            font-weight: bold;
-        }
+        padding-bottom: 0.5rem;
     }
-    &__tags {
-        padding: 0.5rem 0;
+    &__title {
+        margin: 0;
+        font-size: 1.17rem;
+        font-weight: bold;
     }
-    &__date {
+    &__subtitle {
         font-size: 0.875rem;
         color: $font-color-light;
     }
-    &__notes {
-        border-top: 1px solid $border-color;
-        margin-top: 0.5rem;
+    &__tags {
         padding-top: 0.5rem;
+    }
+    &__content {
+        border-top: 1px solid $border-color;
+        padding: 0.5rem 0;
+
         & > *:first-child {
             margin-top: 0;
         }
@@ -222,16 +195,15 @@ body {
         }
     }
 }
+ul {
+    padding-left: 1.5rem;
+}
 
 .tag {
     margin-right: 0.5rem;
     &::before {
-        content: "#";
+        content: '#';
         color: $font-color-light;
         letter-spacing: 2px;
     }
-}
-
-.hidden {
-    display: none;
 }

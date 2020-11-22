@@ -146,11 +146,15 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
 };
 
 function parseAndRenderTweet(toml: string): string {
-    return parseTweets(toml).map((tweet) => tweetHtml(tweetViewModel(tweet))).join('');
+    return parseTweets(toml)
+        .map((tweet) => tweetHtml(tweetViewModel(tweet)))
+        .join('');
 }
 
 function parseAndRenderBookmark(toml: string): string {
-    return parseBookmarks(toml).map((bookmark) => bookmarkHtml(bookmarkViewModel(bookmark))).join('');
+    return parseBookmarks(toml)
+        .map((bookmark) => bookmarkHtml(bookmarkViewModel(bookmark)))
+        .join('');
 }
 
 const tweetsAndBookmarks: MarkdownIt.PluginSimple = (md): void => {
@@ -175,7 +179,13 @@ const tweetsAndBookmarks: MarkdownIt.PluginSimple = (md): void => {
 
 const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks).use(tweetsAndBookmarks);
 const cache = new Map<string, string>();
-export function notazamd(): { render: (markdown: string) => string } {
+const tokenCache = new Map<string, Token[]>();
+interface NotazaMd {
+    render: (markdown: string) => string;
+    parse: (markdown: string) => Token[];
+    renderTokens: (tokens: Token[]) => string;
+}
+export function notazamd(): NotazaMd {
     return {
         render: (markdown): string => {
             const cached = cache.get(markdown);
@@ -185,6 +195,18 @@ export function notazamd(): { render: (markdown: string) => string } {
             const rendered = mdIt.render(markdown);
             cache.set(markdown, rendered);
             return rendered;
+        },
+        parse: (markdown): Token[] => {
+            const cached = tokenCache.get(markdown);
+            if (cached !== undefined) {
+                return cached;
+            }
+            const tokens = mdIt.parse(markdown, {});
+            tokenCache.set(markdown, tokens);
+            return tokens;
+        },
+        renderTokens: (tokens): string => {
+            return mdIt.renderer.render(tokens, {}, {});
         },
     };
 }

@@ -9,47 +9,42 @@ function tagsHtml(tags: string[]): string {
 
 export function bookmarkHtml(bookmark: BookmarkViewModel): string {
     return `
-        <div class="bookmark">
-            <h3 class="bookmark__title">
-                <a href="${bookmark.url}" target="_blank" rel="noreferrer noopener">${bookmark.title}</a>
-            </h3>
-            <div class="bookmark__url">${bookmark.url}</div>
-            <div class="bookmark__tags">${tagsHtml(bookmark.tags)}</div>
-            <div class="bookmark__description">${bookmark.descriptionHtml}</div>
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">
+                    <a href="${bookmark.url}" target="_blank" rel="noreferrer noopener">${bookmark.title}</a>
+                </h3>
+                <div class="card__subtitle">${bookmark.url}</div>
+                <div class="card__tags">${tagsHtml(bookmark.tags)}</div>
+            </div>
+            <div class="card__content">${bookmark.descriptionHtml}</div>
         </div>
     `;
 }
 
 export function tweetHtml(tweet: TweetViewModel): string {
     return `
-        <div class="tweet">
-            <div class="tweet__header">
-                <a href="${tweet.url}" target="_blank" rel="noreferrer noopener">@${tweet.userHandle}</a>
-                <span class="tweet__date">on ${tweet.date}</span>
-                <div class="tweet__tags">${tagsHtml(tweet.tags)}</div>
+        <div class="card">
+            <div class="card__header">
+                <a class="card__title" href="${tweet.url}" target="_blank" rel="noreferrer noopener">@${
+        tweet.userHandle
+    }</a>
+                <span class="card__subtitle">on ${tweet.date}</span>
+                <div class="card__tags">${tagsHtml(tweet.tags)}</div>
             </div>
-            <div class="tweet__tweet">${tweet.tweet.replace(/\n/g, '<br>')}</div>
-            <div class="tweet__notes ${tweet.notesHtml.trim() === "" ? "hidden" : ""}">${tweet.notesHtml}</div>
+            <div class="card__content">${tweet.tweet.replace(/\n/g, '<br>')}</div>
+            ${tweet.notesHtml.trim() === '' ? '' : `<div class="card__content">${tweet.notesHtml}</div>`}
         </div>
     `;
 }
 
 function backlinkHtml(pageWithBacklinks: BacklinkViewModel): string {
     return `
-        <div class="reference">
-            <h3>
-                <a href="/#/${pageWithBacklinks.filename}">${pageWithBacklinks.title}</a>
-            </h3>
-            <div>${pageWithBacklinks.content}</div>
-        </div>
-    `;
-}
-
-function backlinksHtml(backlinks: BacklinkViewModel[]): string {
-    return `
-        <div class="backlinks">
-            <h2>Backlinks</h2>
-            ${backlinks.map((backlink) => backlinkHtml(backlink)).join('')}
+        <div class="card">
+            <div class="card__header">
+                <a class="card__title" href="/#/${pageWithBacklinks.filename}">${pageWithBacklinks.title}</a>
+            </div>
+            <div class="card__content">${pageWithBacklinks.content}</div>
         </div>
     `;
 }
@@ -123,7 +118,7 @@ export function mountView(
             <div class="page">${page.html}</div>
             ${page.bookmarks.map((bookmark) => bookmarkHtml(bookmark)).join('')}
             ${page.tweets.map((tweet) => tweetHtml(tweet)).join('')}
-            ${page.backlinks.length > 0 ? backlinksHtml(page.backlinks) : ''}
+            ${page.backlinks.map((backlink) => backlinkHtml(backlink)).join('')}
         `;
         if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
             const $title = document.createElement('h1');
@@ -136,6 +131,7 @@ export function mountView(
         hideSearch();
         contentMark.unmark();
         contentMark.mark($searchInput.value);
+        window.scrollTo(0, 0);
     });
 
     search$.subscribe(({ results, query }) => {
