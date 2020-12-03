@@ -39,6 +39,7 @@ module.exports = {
     plugins: [
         new MiniCssExtractPlugin(),
         new HtmlWebpackPlugin({
+            favicon: 'src/favicon.ico',
             title: 'Notaza',
         }),
     ],
