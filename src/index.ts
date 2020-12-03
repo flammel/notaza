@@ -27,11 +27,7 @@ async function init(): Promise<void> {
 
     mountView(document.body, currentPage$, search$);
     const updateCurrentPage = (url: string): void => {
-        if (url !== '') {
-            currentPage$.next(pageViewModel(store, url, (page) => editLink(page, config)));
-        } else {
-            window.location.hash = '/index.md';
-        }
+        currentPage$.next(pageViewModel(store, url === '' ? 'index.md' : url, (page) => editLink(page, config)));
     };
     const updateSearch = (query: string): void => {
         search$.next(searchViewModel(store, query));
