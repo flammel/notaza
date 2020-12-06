@@ -189,7 +189,10 @@ const tweetsParser = many(
                 return {
                     url,
                     date,
-                    tags: tags.split(' ').map((tag) => tag.replace('#', '')),
+                    tags: tags
+                        .split(' ')
+                        .map((tag) => tag.replace('#', '').trim())
+                        .filter((tag) => tag !== ''),
                     tweet,
                     notes,
                     userHandle: userHandle(url),
@@ -232,7 +235,10 @@ const bookmarksParser = many(
                     date,
                     url,
                     title,
-                    tags: tags.split(' ').map((tag) => tag.replace('#', '')),
+                    tags: tags
+                        .split(' ')
+                        .map((tag) => tag.replace('#', '').trim())
+                        .filter((tag) => tag !== ''),
                     description,
                 };
             } else {

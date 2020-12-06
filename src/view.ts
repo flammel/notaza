@@ -1,50 +1,33 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
-import { BacklinkViewModel, BookmarkViewModel, PageViewModel, SearchViewModel, TweetViewModel } from './viewModel';
+import { PageViewModel, SearchViewModel } from './viewModel';
 import { debounce } from './util';
+import { Card } from './model';
 
 function tagsHtml(tags: string[]): string {
     return tags.map((tag) => `<a href="#/${tag}.md" class="tag">${tag}</a>`).join(' ');
 }
 
-export function bookmarkHtml(bookmark: BookmarkViewModel): string {
+function cardHtml(card: Card): string {
+    const subtitle = card.subtitle ? `<div class="card__subtitle">${card.subtitle}</div>` : '';
+    const tags = card.tags ? `<div class="card__tags">${tagsHtml(card.tags)}</div>` : '';
+    const url = card.url?.startsWith('https://') || card.url?.startsWith('http://') ? card.url : '#/' + card.url;
+    const linkAttr =
+        card.url?.startsWith('https://') || card.url?.startsWith('http://')
+            ? 'target="_blank" rel="noreferrer noopener"'
+            : '';
     return `
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">
-                    <a href="${bookmark.url}" target="_blank" rel="noreferrer noopener">${bookmark.title}</a>
-                </h3>
-                <div class="card__subtitle">${bookmark.url}</div>
-                <div class="card__tags">${tagsHtml(bookmark.tags)}</div>
+                <a class="card__title" href="${url}" ${linkAttr}>
+                    ${card.title}
+                </a>
+                ${subtitle}
+                ${tags}
             </div>
-            <div class="card__content">${bookmark.descriptionHtml}</div>
-        </div>
-    `;
-}
-
-export function tweetHtml(tweet: TweetViewModel): string {
-    return `
-        <div class="card">
-            <div class="card__header">
-                <a class="card__title" href="${tweet.url}" target="_blank" rel="noreferrer noopener">@${
-        tweet.userHandle
-    }</a>
-                <span class="card__subtitle">on ${tweet.date}</span>
-                <div class="card__tags">${tagsHtml(tweet.tags)}</div>
-            </div>
-            <div class="card__content">${tweet.tweet.replace(/\n/g, '<br>')}</div>
-            ${tweet.notesHtml.trim() === '' ? '' : `<div class="card__content">${tweet.notesHtml}</div>`}
-        </div>
-    `;
-}
-
-function backlinkHtml(pageWithBacklinks: BacklinkViewModel): string {
-    return `
-        <div class="card">
-            <div class="card__header">
-                <a class="card__title" href="/#/${pageWithBacklinks.filename}">${pageWithBacklinks.title}</a>
-            </div>
-            <div class="card__content">${pageWithBacklinks.content}</div>
+            ${card.content
+                .filter((content) => !!content)
+                .map((content) => `<div class="card__content">${content}</div>`)}
         </div>
     `;
 }
@@ -116,9 +99,7 @@ export function mountView(
     currentPage$.subscribe((page) => {
         $content.innerHTML = `
             <div class="page">${page.html}</div>
-            ${page.bookmarks.map((bookmark) => bookmarkHtml(bookmark)).join('')}
-            ${page.tweets.map((tweet) => tweetHtml(tweet)).join('')}
-            ${page.backlinks.map((backlink) => backlinkHtml(backlink)).join('')}
+            ${page.cards.map((card) => cardHtml(card)).join('')}
         `;
         if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
             const $title = document.createElement('h1');
@@ -135,17 +116,7 @@ export function mountView(
     });
 
     search$.subscribe(({ results, query }) => {
-        $searchResults.innerHTML = results
-            .map((result) => {
-                if (result.type === 'bookmark') {
-                    return bookmarkHtml(result.bookmark);
-                } else if (result.type === 'tweet') {
-                    return tweetHtml(result.tweet);
-                } else {
-                    return backlinkHtml(result.page);
-                }
-            })
-            .join('');
+        $searchResults.innerHTML = results.map((result) => cardHtml(result)).join('');
         contentMark.unmark();
         contentMark.mark($searchInput.value);
         searchResultsMark.unmark();

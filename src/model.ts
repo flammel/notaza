@@ -1,8 +1,10 @@
-type FrontMatter = Map<string, string>;
+import { withoutExtension } from './util';
+
+export type PageId = string;
+type FrontMatter = Record<string, string | undefined>;
 
 export interface Page {
-    readonly id: string;
-    readonly filename: string;
+    readonly id: PageId;
     readonly isNew: boolean;
     readonly title: string;
     readonly frontMatter: FrontMatter;
@@ -27,56 +29,40 @@ export interface Tweet {
     readonly notes: string;
 }
 
-export interface Block {
-    content: string;
-    children: Block[];
+export interface Card {
+    type: string;
+    url?: string;
+    title: string;
+    subtitle?: string;
+    tags: string[];
+    content: string[];
 }
+
+export type SearchResult = Card;
 
 export function makePage(filename: string, isNew: boolean, content: string): Page {
     const { frontMatter, body } = bodyAndFrontMatter(content);
     return {
-        filename,
+        id: withoutExtension(filename),
         isNew,
         frontMatter,
         body,
-        title: frontMatter.get('title') || filename,
-        id: withoutExtension(filename),
+        title: frontMatter.title || filename,
     };
 }
 
 export function makePageFromFilename(filename: string): Page {
     return {
-        filename,
-        isNew: true,
-        frontMatter: new Map(),
-        body: '',
         id: withoutExtension(filename),
+        isNew: true,
+        frontMatter: {},
+        body: '',
         title: withoutExtension(filename),
     };
 }
 
-export function searchInTweet(query: string): (tweet: Tweet) => boolean {
-    return (tweet: Tweet): boolean =>
-        tweet.url.toLowerCase().includes(query) ||
-        tweet.tweet.toLowerCase().includes(query) ||
-        tweet.notes.toLowerCase().includes(query) ||
-        tweet.tags.includes(query);
-}
-
-export function searchInBookmark(query: string): (bookmark: Bookmark) => boolean {
-    return (bookmark: Bookmark): boolean =>
-        bookmark.url.toLowerCase().includes(query) ||
-        bookmark.title.toLowerCase().includes(query) ||
-        bookmark.description.toLowerCase().includes(query) ||
-        bookmark.tags.includes(query);
-}
-
-export function searchInPage(query: string): (page: Page) => boolean {
-    return (page: Page): boolean => page.title.toLowerCase().includes(query) || page.body.toLowerCase().includes(query);
-}
-
 function parseFrontMatter(frontMatter: string): FrontMatter {
-    return new Map(
+    return Object.fromEntries(
         frontMatter
             .split('\n')
             .map((line) => line.split(':'))
@@ -87,12 +73,8 @@ function parseFrontMatter(frontMatter: string): FrontMatter {
 function bodyAndFrontMatter(content: string): { frontMatter: FrontMatter; body: string } {
     const [frontMatterStr, ...bodyParts] = content.split('\n---\n');
     if (bodyParts.length < 1 || !frontMatterStr.startsWith('---\n')) {
-        return { frontMatter: new Map(), body: content };
+        return { frontMatter: {}, body: content };
     } else {
         return { frontMatter: parseFrontMatter(frontMatterStr.substring(4)), body: bodyParts.join('\n---\n') };
     }
-}
-
-function withoutExtension(filename: string): string {
-    return filename.split('.').slice(0, -1).join('.');
 }

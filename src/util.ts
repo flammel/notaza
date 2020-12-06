@@ -3,8 +3,11 @@ export function notUndefined<T>(x: T | undefined): x is T {
 }
 
 // https://fettblog.eu/typescript-hasownproperty/
-export function hasOwnProperty<X extends {}, Y extends PropertyKey>(obj: X, prop: Y): obj is X & Record<Y, unknown> {
-    return obj.hasOwnProperty(prop);
+export function hasOwnProperty<X extends {}, Y extends PropertyKey>(
+    obj: X | null,
+    prop: Y,
+): obj is X & Record<Y, unknown> {
+    return obj !== null && obj.hasOwnProperty(prop);
 }
 
 // https://stackoverflow.com/a/30106551
@@ -23,4 +26,12 @@ export function debounce(fn: (param1: string) => void, delay: number): (param1: 
         clearTimeout(timeoutID);
         timeoutID = window.setTimeout(() => fn(param1), delay);
     };
+}
+
+export function withoutExtension(filename: string): string {
+    return filename.split('.').slice(0, -1).join('.');
+}
+
+export function urlize(str: string): string {
+    return str.toLowerCase().replace(/ /g, '-');
 }

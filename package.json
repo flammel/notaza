@@ -4,8 +4,8 @@
     "description": "",
     "private": true,
     "scripts": {
-        "eslint": "tsc --noEmit && eslint 'src/**/*.{js,ts}'",
-        "prettier": "prettier --write '*.{js,ts,scss}' 'src/**/*.{js,ts,scss}' .eslintrc.js .prettierrc.js jsconfig.json package.json tsconfig.json webpack.config.js",
+        "check": "tsc --noEmit && eslint 'src/**/*.{js,ts}'",
+        "format": "prettier --write '*.{js,ts,scss}' 'src/**/*.{js,ts,scss}' .eslintrc.js .prettierrc.js jsconfig.json package.json tsconfig.json webpack.config.js",
         "watch": "webpack --watch --mode=development",
         "serve": "webpack-dev-server",
         "build": "webpack --mode=production"
