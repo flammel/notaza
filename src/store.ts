@@ -89,11 +89,17 @@ class PageRepository {
         const blocks = [];
         let block = [];
         for (const token of tokens) {
-            if (['list_item_open', 'paragraph_open'].includes(token.type) && token.level === 0) {
+            if (
+                (token.type === 'list_item_open' && token.level === 1) ||
+                (token.type === 'paragraph_open' && token.level === 0)
+            ) {
                 open++;
                 continue;
             }
-            if (['list_item_close', 'paragraph_close'].includes(token.type) && token.level === 0) {
+            if (
+                (token.type === 'list_item_close' && token.level === 1) ||
+                (token.type === 'paragraph_close' && token.level === 0)
+            ) {
                 open--;
                 if (open === 0) {
                     blocks.push({ tokens: block });
