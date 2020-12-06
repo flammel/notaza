@@ -3,6 +3,10 @@ import Mark from 'mark.js';
 import { PageViewModel, SearchViewModel } from './viewModel';
 import { debounce } from './util';
 import { Card } from './model';
+import * as CodeMirror from 'codemirror';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/theme/base16-light.css';
+import 'codemirror/mode/gfm/gfm';
 
 function tagsHtml(tags: string[]): string {
     return tags.map((tag) => `<a href="#/${tag}.md" class="tag">${tag}</a>`).join(' ');
@@ -46,7 +50,7 @@ export function mountView(
             <div class="header">
                 <a href="/#/">🏠</a>
                 <a href="/#/_index.md">📁</a>
-                <a id="edit-link" target="_blank" rel="noreferrer noopener" href="">✏️</a>
+                <button id="edit-link">✏️</button>
                 <input placeholder="Search" id="search-input">
             </div>
             <div class="content"></div>
@@ -71,8 +75,9 @@ export function mountView(
         !($content instanceof HTMLElement) ||
         !($searchResults instanceof HTMLElement) ||
         !($searchInput instanceof HTMLInputElement) ||
-        !($editLink instanceof HTMLAnchorElement)
+        !($editLink instanceof HTMLButtonElement)
     ) {
+        console.error('Not all required elements found');
         return;
     }
 
@@ -95,25 +100,65 @@ export function mountView(
 
     const contentMark = new Mark($content);
     const searchResultsMark = new Mark($searchResults);
+    let cm: CodeMirror.Editor | null = null;
 
-    currentPage$.subscribe((page) => {
-        $content.innerHTML = `
-            <div class="page">${page.html}</div>
-            ${page.cards.map((card) => cardHtml(card)).join('')}
-        `;
-        if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
-            const $title = document.createElement('h1');
-            $title.innerHTML = page.title;
-            $content.firstElementChild?.insertAdjacentElement('afterbegin', $title);
+    const showPage = (page: PageViewModel): void => {
+        if (page.editing) {
+            cm = CodeMirror(
+                ($cm) => {
+                    $content.innerHTML = '';
+                    $content.appendChild($cm);
+                    $content.classList.add('content--editing');
+                },
+                {
+                    value: page.raw,
+                    mode: 'gfm',
+                    theme: 'base16-light',
+                    lineNumbers: true,
+                    lineWrapping: false,
+                    viewportMargin: Infinity,
+                    keyMap: 'default',
+                    dragDrop: false,
+                },
+            );
+            $editLink.innerText = '💾';
+        } else {
+            $content.classList.remove('content--editing');
+            $editLink.innerText = '✏️';
+            $editLink.dataset.filename = page.filename;
+            $content.innerHTML = `
+                <div class="page">${page.html}</div>
+                ${page.cards.map((card) => cardHtml(card)).join('')}
+            `;
+            if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
+                const $title = document.createElement('h1');
+                $title.innerHTML = page.title;
+                $content.firstElementChild?.insertAdjacentElement('afterbegin', $title);
+            }
+            document.title = 'KB | ' + page.title;
+            hideSearch();
+            contentMark.unmark();
+            contentMark.mark($searchInput.value);
+            window.scrollTo(0, 0);
         }
-        document.title = 'KB | ' + page.title;
-        $editLink.style.pointerEvents = page.filename.startsWith('_') ? 'none' : 'auto';
-        $editLink.setAttribute('href', page.editLink);
-        hideSearch();
-        contentMark.unmark();
-        contentMark.mark($searchInput.value);
-        window.scrollTo(0, 0);
+    };
+
+    $editLink.addEventListener('click', () => {
+        if ($editLink.innerText === '✏️') {
+            window.dispatchEvent(new CustomEvent('editClick', { detail: $editLink.dataset.filename }));
+        } else {
+            window.dispatchEvent(
+                new CustomEvent('saveClick', {
+                    detail: {
+                        filename: $editLink.dataset.filename,
+                        content: cm?.getValue(),
+                    },
+                }),
+            );
+        }
     });
+
+    currentPage$.subscribe((page) => showPage(page));
 
     search$.subscribe(({ results, query }) => {
         $searchResults.innerHTML = results.map((result) => cardHtml(result)).join('');

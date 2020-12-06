@@ -13,6 +13,7 @@
     "author": "Florian Lammel",
     "license": "MIT",
     "devDependencies": {
+        "@types/codemirror": "0.0.102",
         "@types/katex": "^0.11.0",
         "@types/mark.js": "^8.11.5",
         "@types/markdown-it": "^10.0.3",
@@ -37,6 +38,7 @@
         "webpack-dev-server": "^3.11.0"
     },
     "dependencies": {
+        "codemirror": "^5.58.3",
         "katex": "^0.12.0",
         "mark.js": "^8.11.1",
         "markdown-it": "^12.0.2"

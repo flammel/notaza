@@ -1,13 +1,14 @@
 import { notazamd } from './markdown';
-import { Card, Page, SearchResult } from './model';
+import { Card, SearchResult } from './model';
 import { Store, IndexEntry } from './store';
 
 export interface PageViewModel {
     filename: string;
     title: string;
     html: string;
-    editLink: string;
+    raw: string;
     cards: Card[];
+    editing: boolean;
 }
 
 export interface SearchViewModel {
@@ -15,17 +16,18 @@ export interface SearchViewModel {
     results: SearchResult[];
 }
 
-export function pageViewModel(store: Store, filename: string, editLink: (page: Page) => string): PageViewModel {
+export function pageViewModel(store: Store, filename: string, editing: boolean): PageViewModel {
     if (filename === '_index.md') {
         return makeIndexPage(store.getIndex());
     }
     const page = store.getPage(filename);
     return {
-        filename: page.id,
+        filename: page.filename,
         title: page.title,
-        editLink: editLink(page),
         html: notazamd().render(page.body),
+        raw: page.raw,
         cards: store.getRelated(page),
+        editing,
     };
 }
 
@@ -40,9 +42,10 @@ function makeIndexPage(entries: IndexEntry[]): PageViewModel {
     return {
         filename: '_index.md',
         title: 'Index',
-        editLink: '',
         html: content.join(''),
         cards: [],
+        raw: '',
+        editing: false,
     };
 }
 

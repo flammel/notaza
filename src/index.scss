@@ -29,7 +29,7 @@ body {
 
 .app {
     width: 100%;
-    max-width: 50rem;
+    max-width: 60rem;
     margin: 0 auto;
     padding: 0.5rem;
     box-sizing: border-box;
@@ -60,13 +60,18 @@ body {
     overflow: hidden;
     box-sizing: border-box;
 
-    a {
+    a,
+    button {
         padding: 0.5rem 1rem;
         background: #7ea8e2;
         text-decoration: none !important;
+        border: none;
+        cursor: pointer;
+        outline: none;
     }
 
-    a + a {
+    a + a,
+    a + button {
         border-left: 1px solid #a7c2e8;
     }
 
@@ -206,4 +211,12 @@ ul {
         color: $font-color-light;
         letter-spacing: 2px;
     }
+}
+
+.content--editing {
+    padding: 0;
+}
+
+.CodeMirror {
+    height: auto;
 }

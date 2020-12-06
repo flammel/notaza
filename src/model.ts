@@ -1,14 +1,14 @@
 import { withoutExtension } from './util';
 
-export type PageId = string;
 type FrontMatter = Record<string, string | undefined>;
 
 export interface Page {
-    readonly id: PageId;
+    readonly filename: string;
     readonly isNew: boolean;
     readonly title: string;
     readonly frontMatter: FrontMatter;
     readonly body: string;
+    readonly raw: string;
 }
 
 export interface Bookmark {
@@ -43,21 +43,23 @@ export type SearchResult = Card;
 export function makePage(filename: string, isNew: boolean, content: string): Page {
     const { frontMatter, body } = bodyAndFrontMatter(content);
     return {
-        id: withoutExtension(filename),
+        filename,
         isNew,
         frontMatter,
         body,
         title: frontMatter.title || filename,
+        raw: content,
     };
 }
 
 export function makePageFromFilename(filename: string): Page {
     return {
-        id: withoutExtension(filename),
+        filename,
         isNew: true,
         frontMatter: {},
         body: '',
         title: withoutExtension(filename),
+        raw: `---\ntitle: ${withoutExtension(filename)}\n---\n`,
     };
 }
 

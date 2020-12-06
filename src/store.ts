@@ -1,7 +1,7 @@
 import { ApiFile, ApiFiles } from './api';
 import { notazamd } from './markdown';
 import { parseBookmarks, parseTweets } from './toml';
-import { Bookmark, Tweet, Page, PageId, makePageFromFilename, makePage, Card, SearchResult } from './model';
+import { Bookmark, Tweet, Page, makePageFromFilename, makePage, Card, SearchResult } from './model';
 import Token from 'markdown-it/lib/token';
 import { withoutExtension } from './util';
 
@@ -24,14 +24,18 @@ interface Block {
 
 class PageRepository {
     private static cache = new Map<string, Block[]>();
-    private readonly pages: Map<PageId, Page>;
+    private readonly pages: Map<string, Page>;
+    private readonly aliases: Map<string, Page>;
 
     public constructor(apiFiles: ApiFiles) {
         this.pages = new Map(
             apiFiles
                 .filter((apiFile) => apiFile.filename.endsWith('.md'))
                 .map((apiFile) => makePage(apiFile.filename, false, apiFile.content))
-                .map((page) => [page.id, page]),
+                .map((page) => [page.filename, page]),
+        );
+        this.aliases = new Map(
+            [...this.pages.values()].flatMap((page) => pageAliases(page).map((alias) => [alias, page])),
         );
     }
 
@@ -39,22 +43,22 @@ class PageRepository {
         return [...this.pages.values()];
     }
 
-    public getById(id: PageId): Page | undefined {
-        return this.pages.get(id) ?? this.pages.get(withoutExtension(id));
+    public getById(filename: string): Page | undefined {
+        return this.pages.get(filename) ?? this.aliases.get(withoutExtension(filename));
     }
 
     public addIfMissing(page: Page): void {
-        if (!this.pages.has(page.id)) {
-            this.pages.set(page.id, page);
+        if (!this.getById(page.filename)) {
+            this.pages.set(page.filename, page);
         }
     }
 
     public findRelated(page: Page): Card[] {
         return this.getAll()
-            .filter((other) => other.id !== page.id && containsReference(other.body, page))
+            .filter((other) => other.filename !== page.filename && containsReference(other.body, page))
             .map((other) => ({
                 type: 'page',
-                url: other.id,
+                url: other.filename,
                 title: other.title,
                 tags: [],
                 content: [PageRepository.getFilteredContent(other, (md) => containsReference(md, page))],
@@ -67,7 +71,7 @@ class PageRepository {
             .filter(PageRepository.searchInPage(query.toLowerCase()))
             .map((other) => ({
                 type: 'page',
-                url: other.id,
+                url: other.filename,
                 title: other.title,
                 tags: [],
                 content: [PageRepository.getFilteredContent(other, (md) => md.toLocaleLowerCase().includes(query))],
@@ -80,7 +84,7 @@ class PageRepository {
     }
 
     private static getCachedBlocks(page: Page): Block[] {
-        const cached = PageRepository.cache.get(page.id);
+        const cached = PageRepository.cache.get(page.filename);
         if (cached !== undefined) {
             return cached;
         }
@@ -111,7 +115,7 @@ class PageRepository {
                 block.push(token);
             }
         }
-        PageRepository.cache.set(page.id, blocks);
+        PageRepository.cache.set(page.filename, blocks);
         return blocks;
     }
 
@@ -143,7 +147,12 @@ class BookmarkRepository {
 
     public findRelated(page: Page): Card[] {
         return this.bookmarks
-            .filter((bookmark) => bookmark.tags.includes(page.id) || containsReference(bookmark.description, page))
+            .filter(
+                (bookmark) =>
+                    bookmark.tags.includes(withoutExtension(page.filename)) ||
+                    containsReference(bookmark.description, page) ||
+                    pageAliases(page).some((alias) => bookmark.tags.includes(alias)),
+            )
             .map(BookmarkRepository.toCard);
     }
 
@@ -195,9 +204,10 @@ class TweetRepository {
         return this.tweets
             .filter(
                 (tweet) =>
-                    tweet.tags.includes(page.id) ||
+                    tweet.tags.includes(withoutExtension(page.filename)) ||
                     containsReference(tweet.tweet, page) ||
-                    containsReference(tweet.notes, page),
+                    containsReference(tweet.notes, page) ||
+                    pageAliases(page).some((alias) => tweet.tags.includes(alias)),
             )
             .map(TweetRepository.toCard);
     }
@@ -227,15 +237,21 @@ class TweetRepository {
 }
 
 export class Store {
-    private readonly pageRepo: PageRepository;
-    private readonly bookmarkRepo: BookmarkRepository;
-    private readonly tweetRepo: TweetRepository;
+    private readonly apiFiles: Map<string, ApiFile>;
+    private pageRepo: PageRepository = new PageRepository([]);
+    private bookmarkRepo: BookmarkRepository = new BookmarkRepository([]);
+    private tweetRepo: TweetRepository = new TweetRepository([]);
 
     public constructor(apiFiles: ApiFiles) {
+        this.apiFiles = new Map(apiFiles.map((apiFile) => [apiFile.filename, apiFile]));
+        this.init();
+    }
+
+    private init(): void {
+        const apiFiles = [...this.apiFiles.values()];
         this.pageRepo = new PageRepository(apiFiles);
         this.bookmarkRepo = new BookmarkRepository(apiFiles);
         this.tweetRepo = new TweetRepository(apiFiles);
-
         for (const tag of this.bookmarkRepo.getTags()) {
             this.pageRepo.addIfMissing(makePageFromFilename(tag + '.md'));
         }
@@ -246,7 +262,7 @@ export class Store {
 
     public getIndex(): IndexEntry[] {
         return this.pageRepo.getAll().map((page) => ({
-            url: page.id,
+            url: page.filename,
             title: page.title,
         }));
     }
@@ -272,6 +288,11 @@ export class Store {
             ...this.tweetRepo.search(query),
             ...this.bookmarkRepo.search(query),
         ].sort(searchResultSort(query));
+    }
+
+    public update(filename: string, content: string): void {
+        this.apiFiles.set(filename, { filename, content });
+        this.init();
     }
 }
 
@@ -304,11 +325,27 @@ function getFences(apiFiles: ApiFiles): Fence[] {
 }
 
 function containsReference(str: string, page: Page): boolean {
+    const haystack = str.toLocaleLowerCase();
     return (
-        str.toLocaleLowerCase().includes('](./' + page.id.toLocaleLowerCase() + ')') ||
-        str.toLocaleLowerCase().includes('](./' + page.id.toLocaleLowerCase() + ')') ||
-        str.toLocaleLowerCase().includes('#' + page.id.toLocaleLowerCase()) ||
-        str.toLocaleLowerCase().includes('[[' + page.title.toLocaleLowerCase() + ']]')
+        haystack.includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
+        haystack.includes('](./' + withoutExtension(page.filename.toLocaleLowerCase()) + ')') ||
+        haystack.includes('#' + withoutExtension(page.filename.toLocaleLowerCase())) ||
+        haystack.includes('[[' + page.title.toLocaleLowerCase() + ']]') ||
+        pageAliases(page).some(
+            (alias) =>
+                haystack.includes('](./' + alias + ')') ||
+                haystack.includes('#' + alias) ||
+                haystack.includes('[[' + alias + ']]'),
+        )
+    );
+}
+
+function pageAliases(page: Page): string[] {
+    return (
+        page.frontMatter.aliases
+            ?.split(' ')
+            .map((alias) => alias.trim())
+            .filter((alias) => alias !== '') ?? []
     );
 }
 

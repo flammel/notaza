@@ -1,6 +1,6 @@
 /*eslint @typescript-eslint/camelcase: ["error", {allow: ["git_url"]}]*/
 
-import { base64DecodeUnicode, hasOwnProperty } from './util';
+import { base64DecodeUnicode, base64EncodeUnicode, hasOwnProperty } from './util';
 
 export interface Api {
     loadFiles: () => Promise<ApiFile[]>;
@@ -17,6 +17,7 @@ interface GithubApiFile {
     type: string;
     name: string;
     git_url: string;
+    sha: string;
 }
 
 interface GithubApiFileWithContent {
@@ -26,6 +27,7 @@ interface GithubApiFileWithContent {
 export class GithubApi implements Api {
     private readonly baseUri: string;
     private readonly fetchOptions: RequestInit;
+    private readonly shaByFilename = new Map<string, string>();
 
     constructor(user: string, repo: string, token: string) {
         this.baseUri = `https://api.github.com/repos/${user}/${repo}/contents`;
@@ -52,8 +54,25 @@ export class GithubApi implements Api {
         });
     }
 
+    public updateFile(filename: string, content: string): Promise<void> {
+        return fetch(this.baseUri + '/' + filename, {
+            ...this.fetchOptions,
+            method: 'PUT',
+            body: JSON.stringify({
+                message: 'Update ' + filename,
+                content: base64EncodeUnicode(content),
+                sha: this.shaByFilename.get(filename),
+            }),
+        }).then((response) => {
+            if (response.status !== 200) {
+                throw new Error('Update request failed. Response: ' + response);
+            }
+        });
+    }
+
     private fetchFile(apiFile: GithubApiFile, cache: Cache): Promise<ApiFile> {
         const request = new Request(apiFile.git_url, this.fetchOptions);
+        this.shaByFilename.set(apiFile.name, apiFile.sha);
         return cache
             .match(request)
             .then((response) => response || fetch(request))
@@ -75,13 +94,20 @@ export class GithubApi implements Api {
                 typeof file === 'object' &&
                 hasOwnProperty(file, 'name') &&
                 hasOwnProperty(file, 'git_url') &&
-                hasOwnProperty(file, 'type')
+                hasOwnProperty(file, 'type') &&
+                hasOwnProperty(file, 'sha')
             ) {
                 const name = file.name;
                 const git_url = file.git_url;
                 const type = file.type;
-                if (typeof name === 'string' && typeof git_url === 'string' && typeof type === 'string') {
-                    resolve({ name, git_url, type });
+                const sha = file.sha;
+                if (
+                    typeof name === 'string' &&
+                    typeof git_url === 'string' &&
+                    typeof type === 'string' &&
+                    typeof sha === 'string'
+                ) {
+                    resolve({ name, git_url, type, sha });
                     return;
                 }
             }

@@ -1,21 +1,12 @@
 import { GithubApi } from './api';
 import { mountView } from './view';
-import { Config, loadConfig } from './config';
+import { loadConfig } from './config';
 import { observable } from './observable';
-import { Page } from './model';
 import { Store } from './store';
 import { PageViewModel, SearchViewModel, pageViewModel, searchViewModel } from './viewModel';
 
 import './index.scss';
-
-function editLink(page: Page, config: Config): string {
-    const baseUrl = `https://github.com/${config.user}/${config.repo}`;
-    if (page.isNew) {
-        return `${baseUrl}/new/master?filename=${page.id}.md`;
-    } else {
-        return `${baseUrl}/edit/master/${page.id}.md`;
-    }
-}
+import { hasOwnProperty } from './util';
 
 async function init(): Promise<void> {
     const config = await loadConfig();
@@ -27,14 +18,14 @@ async function init(): Promise<void> {
     const search$ = observable<SearchViewModel>();
 
     mountView(document.body, currentPage$, search$);
-    const updateCurrentPage = (url: string): void => {
-        currentPage$.next(pageViewModel(store, url === '' ? 'index' : url, (page) => editLink(page, config)));
+    const updateCurrentPage = (url: string, editing: boolean): void => {
+        currentPage$.next(pageViewModel(store, url === '' ? 'index.md' : url, editing));
     };
     const updateSearch = (query: string): void => {
         search$.next(searchViewModel(store, query));
     };
     window.addEventListener('hashchange', () => {
-        updateCurrentPage(window.location.hash.substring(2));
+        updateCurrentPage(window.location.hash.substring(2), false);
     });
 
     window.addEventListener('queryChange', (event) => {
@@ -43,6 +34,27 @@ async function init(): Promise<void> {
         }
     });
 
-    updateCurrentPage(window.location.hash.substring(2));
+    window.addEventListener('editClick', (event) => {
+        if (event instanceof CustomEvent && typeof event.detail === 'string') {
+            updateCurrentPage(event.detail, true);
+        }
+    });
+
+    window.addEventListener('saveClick', (event) => {
+        if (event instanceof CustomEvent && typeof event.detail === 'object') {
+            const filename = hasOwnProperty(event.detail, 'filename') ? event.detail.filename : undefined;
+            const content = hasOwnProperty(event.detail, 'content') ? event.detail.content : undefined;
+            if (filename !== undefined && content !== undefined) {
+                api.updateFile(filename, content)
+                    .then(() => {
+                        store.update(filename, content);
+                        updateCurrentPage(event.detail.filename, false);
+                    })
+                    .catch(() => alert('Update failed'));
+            }
+        }
+    });
+
+    updateCurrentPage(window.location.hash.substring(2), false);
 }
 init();
