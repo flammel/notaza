@@ -4,7 +4,6 @@ type FrontMatter = Record<string, string | undefined>;
 
 export interface Page {
     readonly filename: string;
-    readonly isNew: boolean;
     readonly title: string;
     readonly frontMatter: FrontMatter;
     readonly body: string;
@@ -40,11 +39,10 @@ export interface Card {
 
 export type SearchResult = Card;
 
-export function makePage(filename: string, isNew: boolean, content: string): Page {
+export function makePage(filename: string, content: string): Page {
     const { frontMatter, body } = bodyAndFrontMatter(content);
     return {
         filename,
-        isNew,
         frontMatter,
         body,
         title: frontMatter.title || filename,
@@ -55,7 +53,6 @@ export function makePage(filename: string, isNew: boolean, content: string): Pag
 export function makePageFromFilename(filename: string): Page {
     return {
         filename,
-        isNew: true,
         frontMatter: {},
         body: '',
         title: withoutExtension(filename),

@@ -42,7 +42,7 @@ class PageRepository {
         this.pages = new Map(
             apiFiles
                 .filter((apiFile) => apiFile.filename.endsWith('.md'))
-                .map((apiFile) => makePage(apiFile.filename, false, apiFile.content))
+                .map((apiFile) => makePage(apiFile.filename, apiFile.content))
                 .map((page) => [page.filename, page]),
         );
         this.aliases = new Map(
