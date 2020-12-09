@@ -27,7 +27,7 @@ interface GithubApiFileWithContent {
 interface GithubApiUpdateResponse {
     content: {
         sha: string;
-    }
+    };
 }
 
 export class GithubApi implements Api {
@@ -69,14 +69,18 @@ export class GithubApi implements Api {
                 content: base64EncodeUnicode(content),
                 sha: this.shaByFilename.get(filename),
             }),
-        }).then((response) => {
-            if (response.status < 200 || response.status >= 300) {
-                throw new Error('Update request failed. Response: ' + response);
-            } else {
-                return response.json();
-            }
-        }).then((json) => GithubApi.decodeUpdateResponse(json))
-        .then(({content}) => {this.shaByFilename.set(filename, content.sha)});
+        })
+            .then((response) => {
+                if (response.status < 200 || response.status >= 300) {
+                    throw new Error('Update request failed. Response: ' + response);
+                } else {
+                    return response.json();
+                }
+            })
+            .then((json) => GithubApi.decodeUpdateResponse(json))
+            .then(({ content }) => {
+                this.shaByFilename.set(filename, content.sha);
+            });
     }
 
     private fetchFile(apiFile: GithubApiFile, cache: Cache): Promise<ApiFile> {

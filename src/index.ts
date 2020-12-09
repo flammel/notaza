@@ -12,7 +12,7 @@ import './index.scss';
 const $style = document.createElement('style');
 document.head.appendChild($style);
 function applyStyles(store: Store): void {
-    $style.innerHTML = store.getCss().join("\n");
+    $style.innerHTML = store.getCss().join('\n');
 }
 
 async function init(): Promise<void> {

@@ -271,7 +271,9 @@ export class Store {
     }
 
     public getCss(): string[] {
-        return getFences([...this.apiFiles.values()]).filter(({info}) => info === 'notaza-css').map(({content}) => content);
+        return getFences([...this.apiFiles.values()])
+            .filter(({ info }) => info === 'notaza-css')
+            .map(({ content }) => content);
     }
 }
 
