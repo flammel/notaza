@@ -24,6 +24,12 @@ interface GithubApiFileWithContent {
     content: string;
 }
 
+interface GithubApiUpdateResponse {
+    content: {
+        sha: string;
+    }
+}
+
 export class GithubApi implements Api {
     private readonly baseUri: string;
     private readonly fetchOptions: RequestInit;
@@ -66,8 +72,11 @@ export class GithubApi implements Api {
         }).then((response) => {
             if (response.status < 200 || response.status >= 300) {
                 throw new Error('Update request failed. Response: ' + response);
+            } else {
+                return response.json();
             }
-        });
+        }).then((json) => GithubApi.decodeUpdateResponse(json))
+        .then(({content}) => {this.shaByFilename.set(filename, content.sha)});
     }
 
     private fetchFile(apiFile: GithubApiFile, cache: Cache): Promise<ApiFile> {
@@ -125,6 +134,22 @@ export class GithubApi implements Api {
                 }
             }
             reject({ error: 'decodeApiFileWithContent failed', file });
+        });
+    }
+
+    private static decodeUpdateResponse(response: unknown): Promise<GithubApiUpdateResponse> {
+        return new Promise((resolve, reject) => {
+            if (typeof response === 'object' && hasOwnProperty(response, 'content')) {
+                const content = response.content;
+                if (typeof content === 'object' && hasOwnProperty(content, 'sha')) {
+                    const sha = content.sha;
+                    if (typeof sha === 'string') {
+                        resolve({ content: { sha } });
+                        return;
+                    }
+                }
+            }
+            reject({ error: 'decodeUpdateResponse failed', response });
         });
     }
 }
