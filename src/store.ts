@@ -269,6 +269,10 @@ export class Store {
         this.apiFiles.set(filename, { filename, content });
         this.init();
     }
+
+    public getCss(): string[] {
+        return getFences([...this.apiFiles.values()]).filter(({info}) => info === 'notaza-css').map(({content}) => content);
+    }
 }
 
 function searchResultSort(query: string): (a: SearchResult, b: SearchResult) => number {

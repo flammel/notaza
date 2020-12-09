@@ -9,6 +9,12 @@ import { AppEvent } from './event';
 
 import './index.scss';
 
+const $style = document.createElement('style');
+document.head.appendChild($style);
+function applyStyles(store: Store): void {
+    $style.innerHTML = store.getCss().join("\n");
+}
+
 async function init(): Promise<void> {
     const config = await loadConfig();
     const api = new GithubApi(config.user, config.repo, config.token);
@@ -18,6 +24,8 @@ async function init(): Promise<void> {
     const currentPage$ = observable<PageViewModel>();
     const search$ = observable<SearchViewModel>();
     const appEvents$ = observable<AppEvent>();
+
+    applyStyles(store);
 
     mountView(document.body, currentPage$, search$, appEvents$);
     const updateCurrentPage = (url: string, editing: boolean): void => {
@@ -43,6 +51,7 @@ async function init(): Promise<void> {
                     .then(() => {
                         store.update(event.filename, event.content);
                         updateCurrentPage(event.filename, false);
+                        applyStyles(store);
                     })
                     .catch(() => alert('Update failed'));
                 break;
