@@ -126,7 +126,8 @@ class BookmarkRepository {
                 (bookmark) =>
                     bookmark.tags.includes(withoutExtension(page.filename)) ||
                     containsReference(bookmark.description, page) ||
-                    pageAliases(page).some((alias) => bookmark.tags.includes(alias)),
+                    pageAliases(page).some((alias) => bookmark.tags.includes(alias)) ||
+                    bookmark.id === withoutExtension(page.filename),
             )
             .map(BookmarkRepository.toCard);
     }
@@ -182,7 +183,8 @@ class TweetRepository {
                     tweet.tags.includes(withoutExtension(page.filename)) ||
                     containsReference(tweet.tweet, page) ||
                     containsReference(tweet.notes, page) ||
-                    pageAliases(page).some((alias) => tweet.tags.includes(alias)),
+                    pageAliases(page).some((alias) => tweet.tags.includes(alias)) ||
+                    tweet.userHandle === withoutExtension(page.filename),
             )
             .map(TweetRepository.toCard);
     }
