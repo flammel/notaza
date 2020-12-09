@@ -1,7 +1,7 @@
 import * as MarkdownIt from 'markdown-it';
 import * as Token from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
-import { urlize } from './util';
+import { memoize, urlize } from './util';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
@@ -158,8 +158,6 @@ const tweetsAndBookmarks: MarkdownIt.PluginSimple = (md): void => {
 };
 
 const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks).use(tweetsAndBookmarks);
-const cache = new Map<string, string>();
-const tokenCache = new Map<string, Token[]>();
 interface NotazaMd {
     render: (markdown: string) => string;
     parse: (markdown: string) => Token[];
@@ -167,26 +165,8 @@ interface NotazaMd {
 }
 export function notazamd(): NotazaMd {
     return {
-        render: (markdown): string => {
-            const cached = cache.get(markdown);
-            if (cached !== undefined) {
-                return cached;
-            }
-            const rendered = mdIt.render(markdown);
-            cache.set(markdown, rendered);
-            return rendered;
-        },
-        parse: (markdown): Token[] => {
-            const cached = tokenCache.get(markdown);
-            if (cached !== undefined) {
-                return cached;
-            }
-            const tokens = mdIt.parse(markdown, {});
-            tokenCache.set(markdown, tokens);
-            return tokens;
-        },
-        renderTokens: (tokens): string => {
-            return mdIt.renderer.render(tokens, {}, {});
-        },
+        render: memoize((markdown): string => mdIt.render(markdown)),
+        parse: memoize((markdown): Token[] => mdIt.parse(markdown, {})),
+        renderTokens: (tokens): string => mdIt.renderer.render(tokens, {}, {}),
     };
 }

@@ -3,7 +3,7 @@ import { notazamd } from './markdown';
 import { parseBookmarks, parseTweets } from './toml';
 import { Bookmark, Tweet, Page, makePageFromFilename, makePage, Card, SearchResult } from './model';
 import Token from 'markdown-it/lib/token';
-import { withoutExtension } from './util';
+import { memoize, withoutExtension } from './util';
 
 type Filename = string;
 
@@ -22,10 +22,21 @@ interface Block {
     tokens: Token[];
 }
 
+const getFences = memoize((apiFiles: ApiFiles): Fence[] =>
+    apiFiles
+        .filter((apiFile) => apiFile.filename.endsWith('.md'))
+        .flatMap((file) =>
+            notazamd()
+                .parse(file.content)
+                .filter((token) => token.type === 'fence')
+                .map((token) => ({ file, info: token.info.trim(), content: token.content })),
+        ),
+);
+
 class PageRepository {
-    private static cache = new Map<string, Block[]>();
     private readonly pages: Map<string, Page>;
     private readonly aliases: Map<string, Page>;
+    private static readonly memoizedGetBlocks = memoize(getBlocks);
 
     public constructor(apiFiles: ApiFiles) {
         this.pages = new Map(
@@ -83,44 +94,8 @@ class PageRepository {
             page.title.toLowerCase().includes(query) || page.body.toLowerCase().includes(query);
     }
 
-    private static getCachedBlocks(page: Page): Block[] {
-        const cached = PageRepository.cache.get(page.filename);
-        if (cached !== undefined) {
-            return cached;
-        }
-        const tokens = notazamd().parse(page.body);
-        let open = 0;
-        const blocks = [];
-        let block = [];
-        for (const token of tokens) {
-            if (
-                (token.type === 'list_item_open' && token.level === 1) ||
-                (token.type === 'paragraph_open' && token.level === 0)
-            ) {
-                open++;
-                continue;
-            }
-            if (
-                (token.type === 'list_item_close' && token.level === 1) ||
-                (token.type === 'paragraph_close' && token.level === 0)
-            ) {
-                open--;
-                if (open === 0) {
-                    blocks.push({ tokens: block });
-                    block = [];
-                    continue;
-                }
-            }
-            if (open > 0) {
-                block.push(token);
-            }
-        }
-        PageRepository.cache.set(page.filename, blocks);
-        return blocks;
-    }
-
     private static getFilteredContent(page: Page, filter: (md: string) => boolean): string {
-        const blocks = PageRepository.getCachedBlocks(page).filter((block) =>
+        const blocks = PageRepository.memoizedGetBlocks(page).filter((block) =>
             block.tokens.some((token) => filter(token.content)),
         );
         return `<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`;
@@ -313,17 +288,6 @@ function searchResultSort(query: string): (a: SearchResult, b: SearchResult) => 
     };
 }
 
-function getFences(apiFiles: ApiFiles): Fence[] {
-    return apiFiles
-        .filter((apiFile) => apiFile.filename.endsWith('.md'))
-        .flatMap((file) =>
-            notazamd()
-                .parse(file.content)
-                .filter((token) => token.type === 'fence')
-                .map((token) => ({ file, info: token.info.trim(), content: token.content })),
-        );
-}
-
 function containsReference(str: string, page: Page): boolean {
     const haystack = str.toLocaleLowerCase();
     return (
@@ -351,4 +315,35 @@ function pageAliases(page: Page): string[] {
 
 function addTag<T extends { tags: string[] }>(tag: string, tagged: T): T {
     return { ...tagged, tags: [...new Set([...tagged.tags, tag])] };
+}
+
+function getBlocks(page: Page): Block[] {
+    const tokens = notazamd().parse(page.body);
+    let open = 0;
+    const blocks = [];
+    let block = [];
+    for (const token of tokens) {
+        if (
+            (token.type === 'list_item_open' && token.level === 1) ||
+            (token.type === 'paragraph_open' && token.level === 0)
+        ) {
+            open++;
+            continue;
+        }
+        if (
+            (token.type === 'list_item_close' && token.level === 1) ||
+            (token.type === 'paragraph_close' && token.level === 0)
+        ) {
+            open--;
+            if (open === 0) {
+                blocks.push({ tokens: block });
+                block = [];
+                continue;
+            }
+        }
+        if (open > 0) {
+            block.push(token);
+        }
+    }
+    return blocks;
 }

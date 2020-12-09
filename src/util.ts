@@ -44,3 +44,17 @@ export function withoutExtension(filename: string): string {
 export function urlize(str: string): string {
     return str.toLowerCase().replace(/ /g, '-');
 }
+
+export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
+    const cache = new Map<I, O>();
+    return (x: I): O => {
+        const cached = cache.get(x);
+        if (cache.has(x) && cached) {
+            return cached;
+        } else {
+            const computed = fn(x);
+            cache.set(x, computed);
+            return computed;
+        }
+    };
+}
