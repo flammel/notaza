@@ -4,9 +4,10 @@ import { loadConfig } from './config';
 import { observable } from './observable';
 import { Store } from './store';
 import { PageViewModel, SearchViewModel, pageViewModel, searchViewModel } from './viewModel';
+import { assertNever } from './util';
+import { AppEvent } from './event';
 
 import './index.scss';
-import { hasOwnProperty } from './util';
 
 async function init(): Promise<void> {
     const config = await loadConfig();
@@ -16,8 +17,9 @@ async function init(): Promise<void> {
 
     const currentPage$ = observable<PageViewModel>();
     const search$ = observable<SearchViewModel>();
+    const appEvents$ = observable<AppEvent>();
 
-    mountView(document.body, currentPage$, search$);
+    mountView(document.body, currentPage$, search$, appEvents$);
     const updateCurrentPage = (url: string, editing: boolean): void => {
         currentPage$.next(pageViewModel(store, url === '' ? 'index.md' : url, editing));
     };
@@ -28,30 +30,27 @@ async function init(): Promise<void> {
         updateCurrentPage(window.location.hash.substring(2), false);
     });
 
-    window.addEventListener('queryChange', (event) => {
-        if (event instanceof CustomEvent && typeof event.detail === 'string') {
-            updateSearch(event.detail);
-        }
-    });
-
-    window.addEventListener('editClick', (event) => {
-        if (event instanceof CustomEvent && typeof event.detail === 'string') {
-            updateCurrentPage(event.detail, true);
-        }
-    });
-
-    window.addEventListener('saveClick', (event) => {
-        if (event instanceof CustomEvent && typeof event.detail === 'object') {
-            const filename = hasOwnProperty(event.detail, 'filename') ? event.detail.filename : undefined;
-            const content = hasOwnProperty(event.detail, 'content') ? event.detail.content : undefined;
-            if (filename !== undefined && content !== undefined) {
-                api.updateFile(filename, content)
+    appEvents$.subscribe((event) => {
+        switch (event.type) {
+            case 'queryChange':
+                updateSearch(event.query);
+                break;
+            case 'editClick':
+                updateCurrentPage(event.filename, true);
+                break;
+            case 'saveClick':
+                api.updateFile(event.filename, event.content)
                     .then(() => {
-                        store.update(filename, content);
-                        updateCurrentPage(event.detail.filename, false);
+                        store.update(event.filename, event.content);
+                        updateCurrentPage(event.filename, false);
                     })
                     .catch(() => alert('Update failed'));
-            }
+                break;
+            case 'cancelClick':
+                updateCurrentPage(event.filename, false);
+                break;
+            default:
+                assertNever(event);
         }
     });
 

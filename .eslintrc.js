@@ -8,6 +8,7 @@ module.exports = {
     rules: {
         '@typescript-eslint/no-inferrable-types': 'off',
         '@typescript-eslint/no-use-before-define': ['error', { functions: false, classes: false }],
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
         // '@typescript-eslint/strict-boolean-expressions': 'error',
     },
 };

@@ -58,3 +58,7 @@ export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
         }
     };
 }
+
+export function assertNever(_x: never): never {
+    throw new Error('Assert never');
+}

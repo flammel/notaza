@@ -7,6 +7,7 @@ import * as CodeMirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/base16-light.css';
 import 'codemirror/mode/gfm/gfm';
+import { AppEvent } from './event';
 
 function tagsHtml(tags: string[]): string {
     return tags.map((tag) => `<a href="#/${tag}.md" class="tag">${tag}</a>`).join(' ');
@@ -44,6 +45,7 @@ export function mountView(
     $container: HTMLElement,
     currentPage$: Observable<PageViewModel>,
     search$: Observable<SearchViewModel>,
+    appEvents$: Observable<AppEvent>,
 ): void {
     $container.innerHTML = `
         <div class="app">
@@ -51,6 +53,8 @@ export function mountView(
                 <a href="/#/">🏠</a>
                 <a href="/#/_index.md">📁</a>
                 <button id="edit-link">✏️</button>
+                <button id="save-link" class="hidden">💾</button>
+                <button id="cancel-link" class="hidden">❌</button>
                 <input placeholder="Search" id="search-input">
             </div>
             <div class="content"></div>
@@ -70,19 +74,23 @@ export function mountView(
     const $searchResults = document.querySelector('.search__results');
     const $searchInput = document.getElementById('search-input');
     const $editLink = document.getElementById('edit-link');
+    const $saveLink = document.getElementById('save-link');
+    const $cancelLink = document.getElementById('cancel-link');
 
     if (
         !($content instanceof HTMLElement) ||
         !($searchResults instanceof HTMLElement) ||
         !($searchInput instanceof HTMLInputElement) ||
-        !($editLink instanceof HTMLButtonElement)
+        !($editLink instanceof HTMLButtonElement) ||
+        !($saveLink instanceof HTMLButtonElement) ||
+        !($cancelLink instanceof HTMLButtonElement)
     ) {
         console.error('Not all required elements found');
         return;
     }
 
     const debouncedQueryChangeHandler = debounce((query: string) => {
-        window.dispatchEvent(new CustomEvent('queryChange', { detail: query }));
+        appEvents$.next({ type: 'queryChange', query });
     }, 50);
 
     $searchInput.addEventListener('input', () => debouncedQueryChangeHandler($searchInput.value));
@@ -102,13 +110,39 @@ export function mountView(
     const searchResultsMark = new Mark($searchResults);
     let cm: CodeMirror.Editor | null = null;
 
-    const showPage = (page: PageViewModel): void => {
+    $editLink.addEventListener('click', () => {
+        appEvents$.next({
+            type: 'editClick',
+            filename: $content.dataset.filename ?? '',
+        });
+    });
+
+    $saveLink.addEventListener('click', () => {
+        appEvents$.next({
+            type: 'saveClick',
+            filename: $content.dataset.filename ?? '',
+            content: cm?.getValue() ?? '',
+        });
+    });
+
+    $cancelLink.addEventListener('click', () => {
+        appEvents$.next({
+            type: 'cancelClick',
+            filename: $content.dataset.filename ?? '',
+        });
+    });
+
+    currentPage$.subscribe((page) => {
+        $content.dataset.filename = page.filename;
         if (page.editing) {
             cm = CodeMirror(
                 ($cm) => {
                     $content.innerHTML = '';
                     $content.appendChild($cm);
                     $content.classList.add('content--editing');
+                    $editLink.classList.add('hidden');
+                    $saveLink.classList.remove('hidden');
+                    $cancelLink.classList.remove('hidden');
                 },
                 {
                     value: page.raw,
@@ -121,11 +155,12 @@ export function mountView(
                     dragDrop: false,
                 },
             );
-            $editLink.innerText = '💾';
         } else {
             $content.classList.remove('content--editing');
-            $editLink.innerText = '✏️';
-            $editLink.dataset.filename = page.filename;
+            $editLink.classList.remove('hidden');
+            $saveLink.classList.add('hidden');
+            $cancelLink.classList.add('hidden');
+            $cancelLink.classList.add('hidden');
             $content.innerHTML = `
                 <div class="page">${page.html}</div>
                 ${page.cards.map((card) => cardHtml(card)).join('')}
@@ -141,24 +176,7 @@ export function mountView(
             contentMark.mark($searchInput.value);
             window.scrollTo(0, 0);
         }
-    };
-
-    $editLink.addEventListener('click', () => {
-        if ($editLink.innerText === '✏️') {
-            window.dispatchEvent(new CustomEvent('editClick', { detail: $editLink.dataset.filename }));
-        } else {
-            window.dispatchEvent(
-                new CustomEvent('saveClick', {
-                    detail: {
-                        filename: $editLink.dataset.filename,
-                        content: cm?.getValue(),
-                    },
-                }),
-            );
-        }
     });
-
-    currentPage$.subscribe((page) => showPage(page));
 
     search$.subscribe(({ results, query }) => {
         $searchResults.innerHTML = results.map((result) => cardHtml(result)).join('');
