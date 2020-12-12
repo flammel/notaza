@@ -1,3 +1,4 @@
+import { makePageFromFilename } from './DataProvider/util';
 import { notazamd } from './markdown';
 import { Card, SearchResult } from './model';
 import { Store, IndexEntry } from './store';
@@ -18,15 +19,15 @@ export interface SearchViewModel {
 
 export function pageViewModel(store: Store, filename: string, editing: boolean): PageViewModel {
     if (filename === '_index.md') {
-        return makeIndexPage(store.getIndex());
+        return makeIndexPage(store.index());
     }
-    const page = store.getPage(filename);
+    const page = store.page(filename) ?? makePageFromFilename(filename);
     return {
         filename: page.filename,
         title: page.title,
         html: notazamd().render(page.body),
         raw: page.raw,
-        cards: store.getRelated(page),
+        cards: store.related(page),
         editing,
     };
 }

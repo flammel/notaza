@@ -62,3 +62,7 @@ export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
 export function assertNever(_x: never): never {
     throw new Error('Assert never');
 }
+
+export function partial<Arg1, Arg2, Res>(fn: (arg1: Arg1, arg2: Arg2) => Res, arg1: Arg1): (arg2: Arg2) => Res {
+    return fn.bind(null, arg1);
+}

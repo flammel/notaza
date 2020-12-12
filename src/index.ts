@@ -2,24 +2,27 @@ import { GithubApi } from './api';
 import { mountView } from './view';
 import { loadConfig } from './config';
 import { observable } from './observable';
-import { Store } from './store';
+import { makeStore, Store } from './store';
 import { PageViewModel, SearchViewModel, pageViewModel, searchViewModel } from './viewModel';
 import { assertNever } from './util';
 import { AppEvent } from './event';
+import { tweetProvider } from './DataProvider/tweet';
+import { pageProvider } from './DataProvider/page';
+import { bookmarkProvider } from './DataProvider/bookmark';
 
 import './index.scss';
 
 const $style = document.createElement('style');
 document.head.appendChild($style);
 function applyStyles(store: Store): void {
-    $style.innerHTML = store.getCss().join('\n');
+    $style.innerHTML = store.styles().join('\n');
 }
 
 async function init(): Promise<void> {
     const config = await loadConfig();
     const api = new GithubApi(config.user, config.repo, config.token);
     const files = await api.loadFiles();
-    const store = new Store(files);
+    const store = makeStore([pageProvider(files), tweetProvider(files), bookmarkProvider(files)]);
 
     const currentPage$ = observable<PageViewModel>();
     const search$ = observable<SearchViewModel>();

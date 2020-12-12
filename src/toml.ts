@@ -1,6 +1,3 @@
-import { Bookmark, Tweet } from './model';
-import { notUndefined } from './util';
-
 // https://www.sigmacomputing.com/blog/writing-a-parser-combinator-from-scratch-in-typescript/
 
 type Context = Readonly<{
@@ -36,7 +33,7 @@ function advance(context: Context): Context {
     return { ...context, index: context.index + 1 };
 }
 
-function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
+export function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
     return (context): Result<T[]> => {
         const values: T[] = [];
         let currentContext = context;
@@ -53,7 +50,7 @@ function sequence<T>(parsers: Parser<T>[]): Parser<T[]> {
     };
 }
 
-function many<T>(parser: Parser<T>): Parser<T[]> {
+export function many<T>(parser: Parser<T>): Parser<T[]> {
     return (context): Result<T[]> => {
         const values: T[] = [];
         let currentContext = context;
@@ -67,7 +64,7 @@ function many<T>(parser: Parser<T>): Parser<T[]> {
     };
 }
 
-function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
+export function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
     return (context): Result<T> => {
         for (const parser of parsers) {
             const result = parser(context);
@@ -79,7 +76,7 @@ function oneOf<T>(...parsers: Parser<T>[]): Parser<T> {
     };
 }
 
-function optional<T>(parser: Parser<T>): Parser<T | null> {
+export function optional<T>(parser: Parser<T>): Parser<T | null> {
     return (context): Result<T | null> => {
         const result = parser(context);
         if (result.success) {
@@ -89,7 +86,7 @@ function optional<T>(parser: Parser<T>): Parser<T | null> {
     };
 }
 
-function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
+export function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
     return (context): Result<T> => {
         const result = parser(context);
         if (result.success) {
@@ -100,7 +97,7 @@ function map<S, T>(parser: Parser<S>, fn: (s: S) => T): Parser<T> {
     };
 }
 
-function tableHeader(tableName: string): Parser<null> {
+export function tableHeader(tableName: string): Parser<null> {
     return (context): Result<null> => {
         const line = current(context);
         if (typeof line === 'string') {
@@ -113,7 +110,7 @@ function tableHeader(tableName: string): Parser<null> {
     };
 }
 
-function dateKeyValue(key: string): Parser<string> {
+export function dateKeyValue(key: string): Parser<string> {
     return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
@@ -128,7 +125,7 @@ function dateKeyValue(key: string): Parser<string> {
     };
 }
 
-function singleLineStringKeyValue(key: string): Parser<string> {
+export function singleLineStringKeyValue(key: string): Parser<string> {
     return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
@@ -141,7 +138,7 @@ function singleLineStringKeyValue(key: string): Parser<string> {
     };
 }
 
-function multiLineStringKeyValue(key: string): Parser<string> {
+export function multiLineStringKeyValue(key: string): Parser<string> {
     return (context): Result<string> => {
         const line = current(context);
         if (typeof line === 'string') {
@@ -163,7 +160,7 @@ function multiLineStringKeyValue(key: string): Parser<string> {
     };
 }
 
-function emptyLine(): Parser<null> {
+export function emptyLine(): Parser<null> {
     return (context): Result<null> => {
         const line = current(context);
         if (line === '') {
@@ -171,99 +168,4 @@ function emptyLine(): Parser<null> {
         }
         return failure(context, 'empty line');
     };
-}
-
-const tweetsParser = many(
-    map(
-        sequence([
-            tableHeader('tweets'),
-            singleLineStringKeyValue('url'),
-            dateKeyValue('date'),
-            singleLineStringKeyValue('tags'),
-            oneOf(singleLineStringKeyValue('tweet'), multiLineStringKeyValue('tweet')),
-            oneOf(singleLineStringKeyValue('notes'), multiLineStringKeyValue('notes')),
-            optional(emptyLine()),
-        ]),
-        ([, url, date, tags, tweet, notes]) => {
-            if (url !== null && date !== null && tags !== null && tweet !== null && notes !== null) {
-                return {
-                    url,
-                    date,
-                    tags: tags
-                        .split(' ')
-                        .map((tag) => tag.replace('#', '').trim())
-                        .filter((tag) => tag !== ''),
-                    tweet,
-                    notes,
-                    userHandle: userHandle(url),
-                };
-            } else {
-                return undefined;
-            }
-        },
-    ),
-);
-
-function userHandle(url: string): string {
-    const match = url.match(/^https:\/\/twitter\.com\/([^\/]+)\/.*$/);
-    return match ? match[1] : url;
-}
-
-const bookmarksParser = many(
-    map(
-        sequence([
-            tableHeader('bookmarks'),
-            singleLineStringKeyValue('id'),
-            dateKeyValue('date'),
-            singleLineStringKeyValue('url'),
-            singleLineStringKeyValue('title'),
-            singleLineStringKeyValue('tags'),
-            oneOf(singleLineStringKeyValue('description'), multiLineStringKeyValue('description')),
-            optional(emptyLine()),
-        ]),
-        ([, id, date, url, title, tags, description]) => {
-            if (
-                id !== null &&
-                date !== null &&
-                url !== null &&
-                title !== null &&
-                tags !== null &&
-                description !== null
-            ) {
-                return {
-                    id,
-                    date,
-                    url,
-                    title,
-                    tags: tags
-                        .split(' ')
-                        .map((tag) => tag.replace('#', '').trim())
-                        .filter((tag) => tag !== ''),
-                    description,
-                };
-            } else {
-                return undefined;
-            }
-        },
-    ),
-);
-
-export function parseTweets(toml: string): Tweet[] {
-    const result = tweetsParser({ lines: toml.split('\n'), index: 0 });
-    if (result.success) {
-        return result.value.filter(notUndefined);
-    } else {
-        console.warn('Tweet parsing failed', result.expected);
-        return [];
-    }
-}
-
-export function parseBookmarks(toml: string): Bookmark[] {
-    const result = bookmarksParser({ lines: toml.split('\n'), index: 0 });
-    if (result.success) {
-        return result.value.filter(notUndefined);
-    } else {
-        console.warn('Bookmark parsing failed', result.expected);
-        return [];
-    }
 }
