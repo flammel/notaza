@@ -2,7 +2,7 @@ import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { notUndefined, partial, withoutExtension } from '../util';
+import { partial, withoutExtension } from '../util';
 import { DataProvider } from './types';
 import {
     getFences,
@@ -23,51 +23,51 @@ interface Bookmark {
     readonly description: string;
 }
 
-const bookmarksParser = toml.many(
-    toml.map(
-        toml.sequence([
-            toml.tableHeader('bookmarks'),
-            toml.singleLineStringKeyValue('id'),
-            toml.dateKeyValue('date'),
-            toml.singleLineStringKeyValue('url'),
-            toml.singleLineStringKeyValue('title'),
-            toml.singleLineStringKeyValue('tags'),
-            toml.oneOf(toml.singleLineStringKeyValue('description'), toml.multiLineStringKeyValue('description')),
-            toml.optional(toml.emptyLine()),
-        ]),
-        ([, id, date, url, title, tags, description]) => {
-            if (
-                id !== null &&
-                date !== null &&
-                url !== null &&
-                title !== null &&
-                tags !== null &&
-                description !== null
-            ) {
-                return {
-                    id,
-                    date,
-                    url,
-                    title,
-                    tags: tags
-                        .split(' ')
-                        .map((tag) => tag.replace('#', '').trim())
-                        .filter((tag) => tag !== ''),
-                    description,
-                };
-            } else {
-                return undefined;
-            }
-        },
-    ),
-);
+function parseBookmark(tokens: toml.Token[], idx: number): Bookmark | undefined {
+    const header = tokens[idx];
+    const id = tokens[idx + 1];
+    const date = tokens[idx + 2];
+    const url = tokens[idx + 3];
+    const title = tokens[idx + 4];
+    const tags = tokens[idx + 5];
+    const description = tokens[idx + 6];
+    if (
+        header?.type === 'header' &&
+        header?.header === 'bookmarks' &&
+        id?.type === 'keyValue' &&
+        date?.type === 'keyValue' &&
+        url?.type === 'keyValue' &&
+        title?.type === 'keyValue' &&
+        tags?.type === 'keyValue' &&
+        description?.type === 'keyValue'
+    ) {
+        return {
+            id: id.value,
+            date: date.value,
+            url: url.value,
+            title: title.value,
+            tags: tags.value
+                .split(' ')
+                .map((tag) => tag.replace('#', '').trim())
+                .filter((tag) => tag !== ''),
+            description: description.value,
+        };
+    }
+}
 
-function parseBookmarks(toml: string): Bookmark[] {
-    const result = bookmarksParser({ lines: toml.split('\n'), index: 0 });
-    if (result.success) {
-        return result.value.filter(notUndefined);
+function parseBookmarks(tomlStr: string): Bookmark[] {
+    const result = toml.parse(tomlStr.split('\n'));
+    if (result.type === 'success') {
+        const bookmarks: Bookmark[] = [];
+        for (let idx = 0; idx < result.tokens.length; idx = idx + 7) {
+            const bookmark = parseBookmark(result.tokens, idx);
+            if (typeof bookmark === 'string') {
+                bookmarks.push(bookmark);
+            }
+        }
+        return bookmarks;
     } else {
-        console.warn('Bookmark parsing failed', result.expected);
+        console.warn('Bookmark parsing failed', result.error);
         return [];
     }
 }

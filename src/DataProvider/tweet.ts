@@ -2,7 +2,7 @@ import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { notUndefined, partial, withoutExtension } from '../util';
+import { partial, withoutExtension } from '../util';
 import { DataProvider } from './types';
 import {
     getFences,
@@ -23,48 +23,54 @@ interface Tweet {
     readonly notes: string;
 }
 
-const tweetsParser = toml.many(
-    toml.map(
-        toml.sequence([
-            toml.tableHeader('tweets'),
-            toml.singleLineStringKeyValue('url'),
-            toml.dateKeyValue('date'),
-            toml.singleLineStringKeyValue('tags'),
-            toml.oneOf(toml.singleLineStringKeyValue('tweet'), toml.multiLineStringKeyValue('tweet')),
-            toml.oneOf(toml.singleLineStringKeyValue('notes'), toml.multiLineStringKeyValue('notes')),
-            toml.optional(toml.emptyLine()),
-        ]),
-        ([, url, date, tags, tweet, notes]) => {
-            if (url !== null && date !== null && tags !== null && tweet !== null && notes !== null) {
-                return {
-                    url,
-                    date,
-                    tags: tags
-                        .split(' ')
-                        .map((tag) => tag.replace('#', '').trim())
-                        .filter((tag) => tag !== ''),
-                    tweet,
-                    notes,
-                    userHandle: userHandle(url),
-                };
-            } else {
-                return undefined;
-            }
-        },
-    ),
-);
-
 function userHandle(url: string): string {
     const match = url.match(/^https:\/\/twitter\.com\/([^\/]+)\/.*$/);
     return match ? match[1] : url;
 }
 
-function parseTweets(toml: string): Tweet[] {
-    const result = tweetsParser({ lines: toml.split('\n'), index: 0 });
-    if (result.success) {
-        return result.value.filter(notUndefined);
+function parseTweet(tokens: toml.Token[], idx: number): Tweet | undefined {
+    const header = tokens[idx];
+    const url = tokens[idx + 1];
+    const date = tokens[idx + 2];
+    const tags = tokens[idx + 3];
+    const tweet = tokens[idx + 4];
+    const notes = tokens[idx + 5];
+    if (
+        header?.type === 'header' &&
+        header?.header === 'tweets' &&
+        url?.type === 'keyValue' &&
+        date?.type === 'keyValue' &&
+        tags?.type === 'keyValue' &&
+        tweet?.type === 'keyValue' &&
+        notes?.type === 'keyValue'
+    ) {
+        return {
+            url: url.value,
+            date: date.value,
+            tags: tags.value
+                .split(' ')
+                .map((tag) => tag.replace('#', '').trim())
+                .filter((tag) => tag !== ''),
+            tweet: tweet.value,
+            notes: notes.value,
+            userHandle: userHandle(url.value),
+        };
+    }
+}
+
+function parseTweets(tomlStr: string): Tweet[] {
+    const result = toml.parse(tomlStr.split('\n'));
+    if (result.type === 'success') {
+        const tweets: Tweet[] = [];
+        for (let idx = 0; idx < result.tokens.length; idx = idx + 6) {
+            const tweet = parseTweet(result.tokens, idx);
+            if (tweet) {
+                tweets.push(tweet);
+            }
+        }
+        return tweets;
     } else {
-        console.warn('Tweet parsing failed', result.expected);
+        console.warn('Tweet parsing failed', result.error);
         return [];
     }
 }
