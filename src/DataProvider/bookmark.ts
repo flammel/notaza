@@ -61,7 +61,7 @@ function parseBookmarks(tomlStr: string): Bookmark[] {
         const bookmarks: Bookmark[] = [];
         for (let idx = 0; idx < result.tokens.length; idx = idx + 7) {
             const bookmark = parseBookmark(result.tokens, idx);
-            if (typeof bookmark === 'string') {
+            if (bookmark) {
                 bookmarks.push(bookmark);
             }
         }
