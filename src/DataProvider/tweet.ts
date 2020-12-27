@@ -2,16 +2,16 @@ import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { partial, withoutExtension } from '../util';
+import { memoize, partial, withoutExtension } from '../util';
 import { DataProvider } from './types';
 import {
     getFences,
     addTag,
-    pageAliases,
-    containsReference,
     makePageFromFilename,
     updateFiles,
-    relatedByDate,
+    pageNames,
+    disjoint,
+    getReferences,
 } from './util';
 
 interface Tweet {
@@ -95,15 +95,18 @@ function searchFilter(query: string, tweet: Tweet): boolean {
     );
 }
 
+const getOutgoingLinks = memoize((tweet: Tweet): Set<string> => {
+    return new Set([
+        ...tweet.tags,
+        ...getReferences(tweet.tweet),
+        ...getReferences(tweet.notes),
+        tweet.userHandle,
+        tweet.date.substring(0, 10),
+    ]);
+});
+
 function relatedFilter(page: Page, tweet: Tweet): boolean {
-    return (
-        tweet.tags.includes(page.id) ||
-        containsReference(tweet.tweet, page) ||
-        containsReference(tweet.notes, page) ||
-        pageAliases(page).some((alias) => tweet.tags.includes(alias)) ||
-        tweet.userHandle === page.id ||
-        relatedByDate(page, tweet)
-    );
+    return !disjoint(pageNames(page), getOutgoingLinks(tweet));
 }
 
 export function tweetProvider(files: ApiFiles): DataProvider {

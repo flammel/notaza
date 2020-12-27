@@ -4,13 +4,13 @@ import { notazamd } from '../markdown';
 import { Card, Page, FrontMatter, Style } from '../model';
 import { memoize, withoutExtension, partial } from '../util';
 import { DataProvider } from './types';
-import { pageAliases, containsReference, getFences, updateFiles } from './util';
+import { pageAliases, getFences, updateFiles, getReferences } from './util';
 
 interface Block {
     tokens: Token[];
 }
 
-function getBlocks(page: Page): Block[] {
+const getBlocks = memoize((page: Page): Block[] => {
     const tokens = notazamd().parse(page.body);
     let open = 0;
     const blocks = [];
@@ -39,16 +39,16 @@ function getBlocks(page: Page): Block[] {
         }
     }
     return blocks;
-}
+});
 
-const memoizedGetBlocks = memoize(getBlocks);
+type BlockFilter = (block: Block) => boolean;
 
-function getFilteredContent(page: Page, filter: (md: string) => boolean): string {
-    const blocks = memoizedGetBlocks(page).filter((block) => block.tokens.some((token) => filter(token.content)));
+function getFilteredContent(page: Page, blockFilter: BlockFilter): string {
+    const blocks = getBlocks(page).filter(blockFilter);
     return `<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`;
 }
 
-function toCard(filter: (md: string) => boolean, page: Page): Card {
+function toCard(filter: BlockFilter, page: Page): Card {
     return {
         type: 'page',
         url: page.filename,
@@ -63,15 +63,15 @@ function searchFilter(query: string, page: Page): boolean {
 }
 
 function relatedFilter(page: Page, other: Page): boolean {
-    return other.filename !== page.filename && containsReference(other.body, page);
+    return other.filename !== page.filename && getReferences(other.body).has(page.id);
 }
 
-function relatedMdFilter(page: Page, md: string): boolean {
-    return containsReference(md, page);
+function relatedMdFilter(page: Page, block: Block): boolean {
+    return getReferences(block.tokens).has(page.id);
 }
 
-function searchMdFilter(query: string, md: string): boolean {
-    return md.toLocaleLowerCase().includes(query);
+function searchMdFilter(query: string, block: Block): boolean {
+    return block.tokens.some(token => token.content.toLocaleLowerCase().includes(query));
 }
 
 function parseFrontMatter(frontMatter: string): FrontMatter {

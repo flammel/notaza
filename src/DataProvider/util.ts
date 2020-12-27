@@ -1,7 +1,8 @@
+import Token from 'markdown-it/lib/token';
 import { ApiFile, ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Page } from '../model';
-import { memoize, withoutExtension } from '../util';
+import { memoize, urlize, withoutExtension } from '../util';
 
 interface Fence {
     readonly file: ApiFile;
@@ -24,22 +25,6 @@ export function addTag<T extends { tags: string[] }>(tag: string, tagged: T): T 
     return { ...tagged, tags: [...new Set([...tagged.tags, tag])] };
 }
 
-export function containsReference(str: string, page: Page): boolean {
-    const haystack = str.toLocaleLowerCase();
-    return (
-        haystack.includes('](./' + page.filename.toLocaleLowerCase() + ')') ||
-        haystack.includes('](./' + withoutExtension(page.filename.toLocaleLowerCase()) + ')') ||
-        haystack.includes('#' + withoutExtension(page.filename.toLocaleLowerCase())) ||
-        haystack.includes('[[' + page.title.toLocaleLowerCase() + ']]') ||
-        pageAliases(page).some(
-            (alias) =>
-                haystack.includes('](./' + alias + ')') ||
-                haystack.includes('#' + alias) ||
-                haystack.includes('[[' + alias + ']]'),
-        )
-    );
-}
-
 export function pageAliases(page: Page): string[] {
     return (
         page.frontMatter.aliases
@@ -47,6 +32,10 @@ export function pageAliases(page: Page): string[] {
             .map((alias) => alias.trim())
             .filter((alias) => alias !== '') ?? []
     );
+}
+
+export function pageNames(page: Page): Set<string> {
+    return new Set([...pageAliases(page), page.id]);
 }
 
 export function makePageFromFilename(filename: string): Page {
@@ -68,6 +57,26 @@ export function updateFiles(files: ApiFiles, file: ApiFile): ApiFiles {
     }
 }
 
-export function relatedByDate(page: Page, item: { date: string }): boolean {
-    return item.date.startsWith(page.filename.substring(0, 10));
+export function disjoint<T>(a: Set<T>, b: Set<T>): boolean {
+    return [...a].every((x) => !b.has(x));
 }
+
+export const getReferences = memoize((input: string|Token[]): Set<string> => {
+    const inputTokens = typeof input === 'string' ? notazamd().parse(input) : input;
+    const tokens = inputTokens.flatMap((token) => [token, ...token.children ?? []]);
+    const references = new Set<string>();
+    for (const token of tokens) {
+        if (token.type === 'link_open') {
+            const href = token.attrGet('href');
+            const id = (href ?? '').replace('.md', '').replace('./', '').replace('/#/', '');
+            if (id && !id.startsWith('http://') && !id.startsWith('https://')) {
+                references.add(id);
+            }
+        } else if (token.type === 'hashtag') {
+            references.add(token.content)
+        } else if (token.type === 'wikilink') {
+            references.add(urlize(token.content))
+        }
+    }
+    return references;
+});

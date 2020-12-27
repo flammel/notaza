@@ -2,16 +2,16 @@ import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { partial, withoutExtension } from '../util';
+import { memoize, partial, withoutExtension } from '../util';
 import { DataProvider } from './types';
 import {
     getFences,
     addTag,
-    pageAliases,
-    containsReference,
     makePageFromFilename,
     updateFiles,
-    relatedByDate,
+    getReferences,
+    disjoint,
+    pageNames,
 } from './util';
 
 interface Bookmark {
@@ -92,14 +92,17 @@ function searchFilter(query: string, bookmark: Bookmark): boolean {
     );
 }
 
+const getOutgoingLinks = memoize((bookmark: Bookmark): Set<string> => {
+    return new Set([
+        ...bookmark.tags,
+        ...getReferences(bookmark.description),
+        bookmark.id,
+        bookmark.date.substring(0, 10),
+    ]);
+});
+
 function relatedFilter(page: Page, bookmark: Bookmark): boolean {
-    return (
-        bookmark.tags.includes(page.id) ||
-        containsReference(bookmark.description, page) ||
-        pageAliases(page).some((alias) => bookmark.tags.includes(alias)) ||
-        bookmark.id === page.id ||
-        relatedByDate(page, bookmark)
-    );
+    return !disjoint(pageNames(page), getOutgoingLinks(bookmark));
 }
 
 export function bookmarkProvider(files: ApiFiles): DataProvider {
