@@ -137,6 +137,7 @@ export function mountView(
         if (page.editing) {
             cm = CodeMirror(
                 ($cm) => {
+                    hideSearch();
                     $content.innerHTML = '';
                     $content.appendChild($cm);
                     $content.classList.add('content--editing');
