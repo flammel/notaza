@@ -10,12 +10,12 @@ export interface Page {
 }
 
 export interface Card {
-    type: string;
-    url?: string;
-    title: string;
-    subtitle?: string;
-    tags: string[];
-    content: string[];
+    readonly type: string;
+    readonly url?: string;
+    readonly title: string;
+    readonly subtitle?: string;
+    readonly tags: string[];
+    readonly content: string[];
 }
 
 export type SearchResult = Card;
