@@ -15,7 +15,7 @@ function tagsHtml(tags: string[]): string {
 
 function cardHtml(card: Card): string {
     const subtitle = card.subtitle ? `<div class="card__subtitle">${card.subtitle}</div>` : '';
-    const tags = card.tags ? `<div class="card__tags">${tagsHtml(card.tags)}</div>` : '';
+    const tags = card.tags.length > 0 ? `<div class="card__tags">${tagsHtml(card.tags)}</div>` : '';
     const url = card.url?.startsWith('https://') || card.url?.startsWith('http://') ? card.url : '#/' + card.url;
     const linkAttr =
         card.url?.startsWith('https://') || card.url?.startsWith('http://')
