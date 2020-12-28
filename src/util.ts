@@ -42,7 +42,7 @@ export function withoutExtension(filename: string): string {
 }
 
 export function urlize(str: string): string {
-    return str.toLowerCase().replace(/ /g, '-');
+    return str.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
 export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
