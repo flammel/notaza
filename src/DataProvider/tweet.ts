@@ -3,7 +3,7 @@ import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
 import { memoize, partial, withoutExtension } from '../util';
-import { DataProvider } from './types';
+import { DataProvider, IndexEntry } from './types';
 import {
     getFences,
     addTag,
@@ -122,8 +122,11 @@ export function tweetProvider(files: ApiFiles): DataProvider {
         tweets.flatMap((tweet) => tweet.tags.map((tag) => [tag + '.md', makePageFromFilename(tag + '.md')])),
     );
     return {
-        pages(): Page[] {
-            return [...pages.values()];
+        indexEntries(): IndexEntry[] {
+            return [...pages.values()].map((page) => ({
+                url: page.filename,
+                title: page.title
+            }))
         },
         page(filename): Page | undefined {
             return pages.get(filename);

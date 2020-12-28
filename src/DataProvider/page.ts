@@ -3,7 +3,7 @@ import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
 import { Card, Page, FrontMatter, Style } from '../model';
 import { memoize, withoutExtension, partial } from '../util';
-import { DataProvider } from './types';
+import { DataProvider, IndexEntry } from './types';
 import { pageAliases, getFences, updateFiles, getReferences } from './util';
 
 interface Block {
@@ -113,8 +113,11 @@ export function pageProvider(files: ApiFiles): DataProvider {
     );
     const aliases = new Map([...pages.values()].flatMap((page) => pageAliases(page).map((alias) => [alias, page])));
     return {
-        pages(): Page[] {
-            return [...pages.values()];
+        indexEntries(): IndexEntry[] {
+            return [...pages.values()].map((page) => ({
+                url: page.filename,
+                title: page.title
+            }))
         },
         page(filename): Page | undefined {
             return pages.get(filename) ?? aliases.get(withoutExtension(filename));

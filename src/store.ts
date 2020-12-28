@@ -1,10 +1,5 @@
 import { Page, Card, SearchResult } from './model';
-import { DataProvider } from './DataProvider/types';
-
-export interface IndexEntry {
-    title: string;
-    url: string;
-}
+import { DataProvider, IndexEntry } from './DataProvider/types';
 
 export interface Store {
     index: () => IndexEntry[];
@@ -18,11 +13,7 @@ export interface Store {
 export function makeStore(dataProviders: DataProvider[]): Store {
     return {
         index(): IndexEntry[] {
-            return [
-                ...new Map(
-                    dataProviders.flatMap((provider) => provider.pages().map((page) => [page.filename, page.title])),
-                ).entries(),
-            ].map(([url, title]) => ({ url, title }));
+            return dataProviders.flatMap((provider) => provider.indexEntries());
         },
         page(filename: string): Page | undefined {
             return dataProviders.reduce(

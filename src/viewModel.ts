@@ -1,7 +1,8 @@
+import { IndexEntry } from './DataProvider/types';
 import { makePageFromFilename } from './DataProvider/util';
 import { notazamd } from './markdown';
 import { Card, SearchResult } from './model';
-import { Store, IndexEntry } from './store';
+import { Store } from './store';
 
 export interface PageViewModel {
     filename: string;
