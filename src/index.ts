@@ -1,9 +1,9 @@
 import { GithubApi } from './api';
-import { mountView } from './view';
+import { mountView, ViewState } from './view';
 import { loadConfig } from './config';
 import { observable } from './observable';
 import { makeStore, Store } from './store';
-import { PageViewModel, SearchViewModel, pageViewModel, searchViewModel } from './viewModel';
+import { pageViewModel } from './viewModel';
 import { assertNever } from './util';
 import { AppEvent } from './event';
 import { tweetProvider } from './DataProvider/tweet';
@@ -24,18 +24,33 @@ async function init(): Promise<void> {
     const files = await api.loadFiles();
     const store = makeStore([pageProvider(files), tweetProvider(files), bookmarkProvider(files)]);
 
-    const currentPage$ = observable<PageViewModel>();
-    const search$ = observable<SearchViewModel>();
+    const viewState$ = observable<ViewState>();
     const appEvents$ = observable<AppEvent>();
 
     applyStyles(store);
 
-    mountView(document.body, currentPage$, search$, appEvents$);
+    mountView(document.body, viewState$, appEvents$);
     const updateCurrentPage = (url: string, editing: boolean): void => {
-        currentPage$.next(pageViewModel(store, url === '' ? 'index.md' : url, editing));
+        const pvm = pageViewModel(store, url === '' ? 'index.md' : url, editing);
+        if (editing) {
+            viewState$.next({
+                type: 'edit',
+                filename: pvm.filename,
+                content: pvm.raw,
+            });
+        } else {
+            viewState$.next({
+                type: 'show',
+                page: pvm,
+            });
+        }
     };
     const updateSearch = (query: string): void => {
-        search$.next(searchViewModel(store, query));
+        viewState$.next({
+            type: 'search',
+            query: query,
+            results: store.search(query.toLowerCase().trim()),
+        });
     };
     window.addEventListener('hashchange', () => {
         updateCurrentPage(window.location.hash.substring(2), false);

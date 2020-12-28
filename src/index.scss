@@ -116,14 +116,6 @@ body {
 }
 
 .card {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0 1rem;
-    border: 1px solid var(--border-color);
-    background: #fff;
-    border-radius: 3px;
-    overflow-x: auto;
-
     a,
     a:visited {
         color: var(--primary-color);
@@ -166,11 +158,15 @@ body {
     }
 }
 
-.card {
+.card,
+.editor {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--border-color);
     border-radius: 3px;
+}
+
+.card {
     padding: 0.5rem 1rem;
     margin-bottom: 1rem;
     background: #fff;
@@ -215,10 +211,6 @@ ul {
         color: var(--font-color-light);
         letter-spacing: 2px;
     }
-}
-
-.content--editing {
-    padding: 0;
 }
 
 .CodeMirror {

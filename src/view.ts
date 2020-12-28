@@ -1,8 +1,8 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
-import { PageViewModel, SearchViewModel } from './viewModel';
-import { debounce } from './util';
-import { Card } from './model';
+import { PageViewModel } from './viewModel';
+import { assertNever, debounce } from './util';
+import { Card, SearchResult } from './model';
 import * as CodeMirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/base16-light.css';
@@ -41,10 +41,25 @@ function hideSearch(): void {
     document.querySelector('.app')?.classList.remove('-searching');
 }
 
+interface ShowState {
+    type: 'show';
+    page: PageViewModel;
+}
+interface EditState {
+    type: 'edit';
+    filename: string;
+    content: string;
+}
+interface SearchState {
+    type: 'search';
+    query: string;
+    results: SearchResult[];
+}
+export type ViewState = ShowState | EditState | SearchState;
+
 export function mountView(
     $container: HTMLElement,
-    currentPage$: Observable<PageViewModel>,
-    search$: Observable<SearchViewModel>,
+    viewState$: Observable<ViewState>,
     appEvents$: Observable<AppEvent>,
 ): void {
     $container.innerHTML = `
@@ -132,21 +147,23 @@ export function mountView(
         });
     });
 
-    currentPage$.subscribe((page) => {
-        $content.dataset.filename = page.filename;
-        if (page.editing) {
+    viewState$.subscribe((newState) => {
+        if (newState.type === 'edit') {
+            $content.dataset.filename = newState.filename;
             cm = CodeMirror(
                 ($cm) => {
                     hideSearch();
+                    const $editor = document.createElement('div');
+                    $editor.classList.add('editor');
+                    $editor.appendChild($cm);
                     $content.innerHTML = '';
-                    $content.appendChild($cm);
-                    $content.classList.add('content--editing');
+                    $content.appendChild($editor);
                     $editLink.classList.add('hidden');
                     $saveLink.classList.remove('hidden');
                     $cancelLink.classList.remove('hidden');
                 },
                 {
-                    value: page.raw,
+                    value: newState.content,
                     mode: 'gfm',
                     theme: 'base16-light',
                     lineNumbers: true,
@@ -156,8 +173,9 @@ export function mountView(
                     dragDrop: false,
                 },
             );
-        } else {
-            $content.classList.remove('content--editing');
+        } else if (newState.type === 'show') {
+            const page = newState.page;
+            $content.dataset.filename = newState.page.filename;
             $editLink.classList.remove('hidden');
             $saveLink.classList.add('hidden');
             $cancelLink.classList.add('hidden');
@@ -176,14 +194,14 @@ export function mountView(
             contentMark.unmark();
             contentMark.mark($searchInput.value);
             window.scrollTo(0, 0);
+        } else if (newState.type === 'search') {
+            $searchResults.innerHTML = newState.results.map((result) => cardHtml(result)).join('');
+            contentMark.unmark();
+            contentMark.mark($searchInput.value);
+            searchResultsMark.unmark();
+            searchResultsMark.mark(newState.query);
+        } else {
+            assertNever(newState);
         }
-    });
-
-    search$.subscribe(({ results, query }) => {
-        $searchResults.innerHTML = results.map((result) => cardHtml(result)).join('');
-        contentMark.unmark();
-        contentMark.mark($searchInput.value);
-        searchResultsMark.unmark();
-        searchResultsMark.mark(query);
     });
 }
