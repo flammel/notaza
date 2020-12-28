@@ -71,7 +71,7 @@ function relatedMdFilter(page: Page, block: Block): boolean {
 }
 
 function searchMdFilter(query: string, block: Block): boolean {
-    return block.tokens.some(token => token.content.toLocaleLowerCase().includes(query));
+    return block.tokens.some((token) => token.content.toLocaleLowerCase().includes(query));
 }
 
 function parseFrontMatter(frontMatter: string): FrontMatter {
@@ -116,8 +116,8 @@ export function pageProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return [...pages.values()].map((page) => ({
                 url: page.filename,
-                title: page.title
-            }))
+                title: page.title,
+            }));
         },
         page(filename): Page | undefined {
             return pages.get(filename) ?? aliases.get(withoutExtension(filename));

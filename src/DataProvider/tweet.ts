@@ -4,15 +4,7 @@ import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
 import { memoize, partial, withoutExtension } from '../util';
 import { DataProvider, IndexEntry } from './types';
-import {
-    getFences,
-    addTag,
-    makePageFromFilename,
-    updateFiles,
-    pageNames,
-    disjoint,
-    getReferences,
-} from './util';
+import { getFences, addTag, makePageFromFilename, updateFiles, pageNames, disjoint, getReferences } from './util';
 
 interface Tweet {
     readonly url: string;
@@ -95,15 +87,17 @@ function searchFilter(query: string, tweet: Tweet): boolean {
     );
 }
 
-const getOutgoingLinks = memoize((tweet: Tweet): Set<string> => {
-    return new Set([
-        ...tweet.tags,
-        ...getReferences(tweet.tweet),
-        ...getReferences(tweet.notes),
-        tweet.userHandle,
-        tweet.date.substring(0, 10),
-    ]);
-});
+const getOutgoingLinks = memoize(
+    (tweet: Tweet): Set<string> => {
+        return new Set([
+            ...tweet.tags,
+            ...getReferences(tweet.tweet),
+            ...getReferences(tweet.notes),
+            tweet.userHandle,
+            tweet.date.substring(0, 10),
+        ]);
+    },
+);
 
 function relatedFilter(page: Page, tweet: Tweet): boolean {
     return !disjoint(pageNames(page), getOutgoingLinks(tweet));
@@ -125,8 +119,8 @@ export function tweetProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return [...pages.values()].map((page) => ({
                 url: page.filename,
-                title: page.title
-            }))
+                title: page.title,
+            }));
         },
         page(filename): Page | undefined {
             return pages.get(filename);

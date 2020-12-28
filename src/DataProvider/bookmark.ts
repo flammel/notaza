@@ -4,15 +4,7 @@ import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
 import { memoize, partial, withoutExtension } from '../util';
 import { DataProvider, IndexEntry } from './types';
-import {
-    getFences,
-    addTag,
-    makePageFromFilename,
-    updateFiles,
-    getReferences,
-    disjoint,
-    pageNames,
-} from './util';
+import { getFences, addTag, makePageFromFilename, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Bookmark {
     readonly id: string;
@@ -92,14 +84,16 @@ function searchFilter(query: string, bookmark: Bookmark): boolean {
     );
 }
 
-const getOutgoingLinks = memoize((bookmark: Bookmark): Set<string> => {
-    return new Set([
-        ...bookmark.tags,
-        ...getReferences(bookmark.description),
-        bookmark.id,
-        bookmark.date.substring(0, 10),
-    ]);
-});
+const getOutgoingLinks = memoize(
+    (bookmark: Bookmark): Set<string> => {
+        return new Set([
+            ...bookmark.tags,
+            ...getReferences(bookmark.description),
+            bookmark.id,
+            bookmark.date.substring(0, 10),
+        ]);
+    },
+);
 
 function relatedFilter(page: Page, bookmark: Bookmark): boolean {
     return !disjoint(pageNames(page), getOutgoingLinks(bookmark));
@@ -121,8 +115,8 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return [...pages.values()].map((page) => ({
                 url: page.filename,
-                title: page.title
-            }))
+                title: page.title,
+            }));
         },
         page(filename): Page | undefined {
             return pages.get(filename);

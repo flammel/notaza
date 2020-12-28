@@ -61,22 +61,24 @@ export function disjoint<T>(a: Set<T>, b: Set<T>): boolean {
     return [...a].every((x) => !b.has(x));
 }
 
-export const getReferences = memoize((input: string|Token[]): Set<string> => {
-    const inputTokens = typeof input === 'string' ? notazamd().parse(input) : input;
-    const tokens = inputTokens.flatMap((token) => [token, ...token.children ?? []]);
-    const references = new Set<string>();
-    for (const token of tokens) {
-        if (token.type === 'link_open') {
-            const href = token.attrGet('href');
-            const id = (href ?? '').replace('.md', '').replace('./', '').replace('/#/', '');
-            if (id && !id.startsWith('http://') && !id.startsWith('https://')) {
-                references.add(id);
+export const getReferences = memoize(
+    (input: string | Token[]): Set<string> => {
+        const inputTokens = typeof input === 'string' ? notazamd().parse(input) : input;
+        const tokens = inputTokens.flatMap((token) => [token, ...(token.children ?? [])]);
+        const references = new Set<string>();
+        for (const token of tokens) {
+            if (token.type === 'link_open') {
+                const href = token.attrGet('href');
+                const id = (href ?? '').replace('.md', '').replace('./', '').replace('/#/', '');
+                if (id && !id.startsWith('http://') && !id.startsWith('https://')) {
+                    references.add(id);
+                }
+            } else if (token.type === 'hashtag') {
+                references.add(token.content);
+            } else if (token.type === 'wikilink') {
+                references.add(urlize(token.content));
             }
-        } else if (token.type === 'hashtag') {
-            references.add(token.content)
-        } else if (token.type === 'wikilink') {
-            references.add(urlize(token.content))
         }
-    }
-    return references;
-});
+        return references;
+    },
+);
