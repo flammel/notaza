@@ -4,7 +4,7 @@ import { notazamd } from '../markdown';
 import { Card, Page, FrontMatter, Style } from '../model';
 import { memoize, withoutExtension, partial } from '../util';
 import { DataProvider, IndexEntry } from './types';
-import { pageAliases, getFences, updateFiles, getReferences } from './util';
+import { pageAliases, getFences, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Block {
     tokens: Token[];
@@ -63,11 +63,11 @@ function searchFilter(query: string, page: Page): boolean {
 }
 
 function relatedFilter(page: Page, other: Page): boolean {
-    return other.filename !== page.filename && getReferences(other.body).has(page.id);
+    return other.filename !== page.filename && !disjoint(pageNames(page), getReferences(other.body));
 }
 
 function relatedMdFilter(page: Page, block: Block): boolean {
-    return getReferences(block.tokens).has(page.id);
+    return !disjoint(pageNames(page), getReferences(block.tokens));
 }
 
 function searchMdFilter(query: string, block: Block): boolean {
