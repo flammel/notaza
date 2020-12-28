@@ -115,8 +115,7 @@ body {
     }
 }
 
-.content,
-.search {
+.card {
     width: 100%;
     box-sizing: border-box;
     padding: 0 1rem;
@@ -168,10 +167,13 @@ body {
 }
 
 .card {
+    width: 100%;
+    box-sizing: border-box;
     border: 1px solid var(--border-color);
     border-radius: 3px;
     padding: 0.5rem 1rem;
     margin-bottom: 1rem;
+    background: #fff;
 
     &__header {
         display: flex;

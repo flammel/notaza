@@ -163,7 +163,7 @@ export function mountView(
             $cancelLink.classList.add('hidden');
             $cancelLink.classList.add('hidden');
             $content.innerHTML = `
-                <div class="page">${page.html}</div>
+                <div class="card">${page.html}</div>
                 ${page.cards.map((card) => cardHtml(card)).join('')}
             `;
             if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
