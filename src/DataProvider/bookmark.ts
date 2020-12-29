@@ -108,18 +108,15 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
             parseBookmarks(content).map((bookmark) => addTag(withoutExtension(file.filename), bookmark)),
         );
     const bookmarks = [...tomlBookmarks, ...mdBookmarks];
-    const pages = new Map<string, Page>(
-        bookmarks.flatMap((bookmark) => bookmark.tags.map((tag) => [tag + '.md', makePageFromFilename(tag + '.md')])),
+    const indexEntries = bookmarks.flatMap((bookmark) =>
+        bookmark.tags.map((tag) => ({ url: tag + '.md', title: tag })),
     );
     return {
         indexEntries(): IndexEntry[] {
-            return [...pages.values()].map((page) => ({
-                url: page.filename,
-                title: page.title,
-            }));
+            return indexEntries;
         },
-        page(filename): Page | undefined {
-            return pages.get(filename);
+        page(): Page | undefined {
+            return undefined;
         },
         related(page): Card[] {
             return bookmarks.filter(partial(relatedFilter, page)).map(toCard);

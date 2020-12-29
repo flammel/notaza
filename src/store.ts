@@ -13,7 +13,11 @@ export interface Store {
 export function makeStore(dataProviders: DataProvider[]): Store {
     return {
         index(): IndexEntry[] {
-            return dataProviders.flatMap((provider) => provider.indexEntries());
+            return [
+                ...new Map(
+                    dataProviders.flatMap((provider) => provider.indexEntries().map((entry) => [entry.url, entry])),
+                ).values(),
+            ];
         },
         page(filename: string): Page | undefined {
             return dataProviders.reduce(
