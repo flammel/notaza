@@ -30,8 +30,10 @@ async function init(): Promise<void> {
     applyStyles(store);
 
     mountView(document.body, viewState$, appEvents$);
-    const updateCurrentPage = (url: string, editing: boolean): void => {
-        const pvm = pageViewModel(store, url === '' ? 'index.md' : url, editing);
+    const updateCurrentPage = (url: string): void => {
+        const filename = url.replace('#/', '').replace('?edit', '');
+        const editing = url.endsWith('?edit');
+        const pvm = pageViewModel(store, filename === '' ? 'index.md' : filename, editing);
         if (editing) {
             viewState$.next({
                 type: 'edit',
@@ -53,7 +55,7 @@ async function init(): Promise<void> {
         });
     };
     window.addEventListener('hashchange', () => {
-        updateCurrentPage(window.location.hash.substring(2), false);
+        updateCurrentPage(window.location.hash);
     });
 
     appEvents$.subscribe((event) => {
@@ -61,26 +63,20 @@ async function init(): Promise<void> {
             case 'queryChange':
                 updateSearch(event.query);
                 break;
-            case 'editClick':
-                updateCurrentPage(event.filename, true);
-                break;
             case 'saveClick':
                 api.updateFile(event.filename, event.content)
                     .then(() => {
                         store.update(event.filename, event.content);
-                        updateCurrentPage(event.filename, false);
+                        window.location.hash = '/' + event.filename;
                         applyStyles(store);
                     })
                     .catch(() => alert('Update failed'));
-                break;
-            case 'cancelClick':
-                updateCurrentPage(event.filename, false);
                 break;
             default:
                 assertNever(event);
         }
     });
 
-    updateCurrentPage(window.location.hash.substring(2), false);
+    updateCurrentPage(window.location.hash);
 }
 init();

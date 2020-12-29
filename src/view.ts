@@ -67,9 +67,9 @@ export function mountView(
             <div class="header">
                 <a href="/#/">🏠</a>
                 <a href="/#/_index.md">📁</a>
-                <button id="edit-link">✏️</button>
+                <a href="/#/?edit" id="edit-link">✏️</a>
                 <button id="save-link" class="hidden">💾</button>
-                <button id="cancel-link" class="hidden">❌</button>
+                <a href="/#/" id="cancel-link" class="hidden">❌</a>
                 <input placeholder="Search" id="search-input">
             </div>
             <div class="content"></div>
@@ -96,9 +96,9 @@ export function mountView(
         !($content instanceof HTMLElement) ||
         !($searchResults instanceof HTMLElement) ||
         !($searchInput instanceof HTMLInputElement) ||
-        !($editLink instanceof HTMLButtonElement) ||
+        !($editLink instanceof HTMLAnchorElement) ||
         !($saveLink instanceof HTMLButtonElement) ||
-        !($cancelLink instanceof HTMLButtonElement)
+        !($cancelLink instanceof HTMLAnchorElement)
     ) {
         console.error('Not all required elements found');
         return;
@@ -124,32 +124,10 @@ export function mountView(
     const contentMark = new Mark($content);
     const searchResultsMark = new Mark($searchResults);
     let cm: CodeMirror.Editor | null = null;
-
-    $editLink.addEventListener('click', () => {
-        appEvents$.next({
-            type: 'editClick',
-            filename: $content.dataset.filename ?? '',
-        });
-    });
-
-    $saveLink.addEventListener('click', () => {
-        appEvents$.next({
-            type: 'saveClick',
-            filename: $content.dataset.filename ?? '',
-            content: cm?.getValue() ?? '',
-        });
-    });
-
-    $cancelLink.addEventListener('click', () => {
-        appEvents$.next({
-            type: 'cancelClick',
-            filename: $content.dataset.filename ?? '',
-        });
-    });
+    let saveLinkClickListener: (() => void) | null = null;
 
     viewState$.subscribe((newState) => {
         if (newState.type === 'edit') {
-            $content.dataset.filename = newState.filename;
             cm = CodeMirror(
                 ($cm) => {
                     hideSearch();
@@ -161,6 +139,18 @@ export function mountView(
                     $editLink.classList.add('hidden');
                     $saveLink.classList.remove('hidden');
                     $cancelLink.classList.remove('hidden');
+                    $cancelLink.setAttribute('href', '/#/' + newState.filename);
+                    if (saveLinkClickListener) {
+                        $saveLink.removeEventListener('click', saveLinkClickListener);
+                    }
+                    saveLinkClickListener = (): void => {
+                        appEvents$.next({
+                            type: 'saveClick',
+                            filename: newState.filename,
+                            content: cm?.getValue() ?? '',
+                        });
+                    };
+                    $saveLink.addEventListener('click', saveLinkClickListener);
                 },
                 {
                     value: newState.content,
@@ -175,10 +165,9 @@ export function mountView(
             );
         } else if (newState.type === 'show') {
             const page = newState.page;
-            $content.dataset.filename = newState.page.filename;
             $editLink.classList.remove('hidden');
+            $editLink.setAttribute('href', '/#/' + newState.page.filename + '?edit');
             $saveLink.classList.add('hidden');
-            $cancelLink.classList.add('hidden');
             $cancelLink.classList.add('hidden');
             $content.innerHTML = `
                 <div class="card">${page.html}</div>
