@@ -4,7 +4,7 @@ import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
 import { memoize, partial, withoutExtension } from '../util';
 import { DataProvider, IndexEntry } from './types';
-import { getFences, addTag, makePageFromFilename, updateFiles, getReferences, disjoint, pageNames } from './util';
+import { getFences, addTag, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Bookmark {
     readonly id: string;
