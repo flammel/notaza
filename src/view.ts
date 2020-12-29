@@ -37,10 +37,6 @@ function cardHtml(card: Card): string {
     `;
 }
 
-function hideSearch(): void {
-    document.querySelector('.app')?.classList.remove('-searching');
-}
-
 interface ShowState {
     type: 'show';
     page: PageViewModel;
@@ -63,7 +59,7 @@ export function mountView(
     appEvents$: Observable<AppEvent>,
 ): void {
     $container.innerHTML = `
-        <div class="app">
+        <div class="app app--highlighting">
             <div class="header">
                 <a href="/#/">🏠</a>
                 <a href="/#/_index.md">📁</a>
@@ -71,6 +67,7 @@ export function mountView(
                 <button id="save-link" class="hidden">💾</button>
                 <a href="/#/" id="cancel-link" class="hidden">❌</a>
                 <input placeholder="Search" id="search-input">
+                <button id="toggle-highlighting"></button>
             </div>
             <div class="content"></div>
             <div class="search">
@@ -85,20 +82,24 @@ export function mountView(
         </div>
     `;
 
+    const $app = document.querySelector('.app');
     const $content = document.querySelector('.content');
     const $searchResults = document.querySelector('.search__results');
     const $searchInput = document.getElementById('search-input');
     const $editLink = document.getElementById('edit-link');
     const $saveLink = document.getElementById('save-link');
     const $cancelLink = document.getElementById('cancel-link');
+    const $toggleHighlighting = document.getElementById('toggle-highlighting');
 
     if (
+        !($app instanceof HTMLElement) ||
         !($content instanceof HTMLElement) ||
         !($searchResults instanceof HTMLElement) ||
         !($searchInput instanceof HTMLInputElement) ||
         !($editLink instanceof HTMLAnchorElement) ||
         !($saveLink instanceof HTMLButtonElement) ||
-        !($cancelLink instanceof HTMLAnchorElement)
+        !($cancelLink instanceof HTMLAnchorElement) ||
+        !($toggleHighlighting instanceof HTMLButtonElement)
     ) {
         console.error('Not all required elements found');
         return;
@@ -107,10 +108,21 @@ export function mountView(
     const debouncedQueryChangeHandler = debounce((query: string) => {
         appEvents$.next({ type: 'queryChange', query });
     }, 50);
+    const hideSearch = (): void => {
+        $app.classList.remove('app--searching');
+    };
 
     $searchInput.addEventListener('input', () => debouncedQueryChangeHandler($searchInput.value));
     $searchInput.addEventListener('focus', () => {
-        document.querySelector('.app')?.classList.add('-searching');
+        $app.classList.add('app--searching');
+    });
+    $toggleHighlighting.addEventListener('click', () => {
+        $app.classList.toggle('app--highlighting');
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            $app.classList.toggle('app--highlighting');
+        }
     });
     document.addEventListener('click', (event) => {
         if (event.target instanceof HTMLElement) {

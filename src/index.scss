@@ -46,12 +46,29 @@ body {
         display: none;
     }
 
-    &.-searching {
+    &--searching {
         .content {
             display: none;
         }
         .search {
             display: block;
+        }
+    }
+
+    mark[data-markjs='true'] {
+        background: transparent;
+        color: inherit;
+    }
+    #toggle-highlighting::after {
+        content: '⚪';
+    }
+    &--highlighting {
+        mark[data-markjs='true'] {
+            background: yellow;
+            color: black;
+        }
+        #toggle-highlighting::after {
+            content: '🟡';
         }
     }
 }
