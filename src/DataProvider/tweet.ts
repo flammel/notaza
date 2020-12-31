@@ -104,14 +104,11 @@ function relatedFilter(page: Page, tweet: Tweet): boolean {
 }
 
 export function tweetProvider(files: ApiFiles): DataProvider {
-    const toml = files.find((file) => file.filename === 'tweets.toml');
-    const tomlTweets = toml ? parseTweets(toml.content) : [];
-    const mdTweets = getFences(files)
+    const tweets = getFences(files)
         .filter(({ info }) => info === 'tweet')
         .flatMap(({ file, content }) =>
             parseTweets(content).map((tweet) => addTag(withoutExtension(file.filename), tweet)),
         );
-    const tweets = [...tomlTweets, ...mdTweets];
     const indexEntries = tweets.flatMap((tweet) => tweet.tags.map((tag) => ({ url: tag + '.md', title: tag })));
     return {
         indexEntries(): IndexEntry[] {

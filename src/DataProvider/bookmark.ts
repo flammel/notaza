@@ -100,14 +100,11 @@ function relatedFilter(page: Page, bookmark: Bookmark): boolean {
 }
 
 export function bookmarkProvider(files: ApiFiles): DataProvider {
-    const toml = files.find((file) => file.filename === 'bookmarks.toml');
-    const tomlBookmarks = toml ? parseBookmarks(toml.content) : [];
-    const mdBookmarks = getFences(files)
+    const bookmarks = getFences(files)
         .filter(({ info }) => info === 'bookmark')
         .flatMap(({ file, content }) =>
             parseBookmarks(content).map((bookmark) => addTag(withoutExtension(file.filename), bookmark)),
         );
-    const bookmarks = [...tomlBookmarks, ...mdBookmarks];
     const indexEntries = bookmarks.flatMap((bookmark) =>
         bookmark.tags.map((tag) => ({ url: tag + '.md', title: tag })),
     );
