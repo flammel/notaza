@@ -1,9 +1,9 @@
 import Token from 'markdown-it/lib/token';
 import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
-import { Card, Page, FrontMatter, Style } from '../model';
+import { Page, FrontMatter, Style, Card } from '../model';
 import { memoize, withoutExtension, partial } from '../util';
-import { DataProvider, IndexEntry } from './types';
+import { CardProducer, DataProvider, IndexEntry } from './types';
 import { pageAliases, getFences, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Block {
@@ -43,19 +43,15 @@ const getBlocks = memoize((page: Page): Block[] => {
 
 type BlockFilter = (block: Block) => boolean;
 
-function getFilteredContent(page: Page, blockFilter: BlockFilter): string {
+function toCard(blockFilter: BlockFilter, page: Page): CardProducer {
     const blocks = getBlocks(page).filter(blockFilter);
-    return `<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`;
-}
-
-function toCard(filter: BlockFilter, page: Page): Card {
-    return {
+    return (): Card => ({
         type: 'page',
         url: page.filename,
         title: page.title,
         tags: [],
-        content: [getFilteredContent(page, filter)],
-    };
+        content: [`<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`],
+    });
 }
 
 function searchFilter(query: string, page: Page): boolean {
@@ -122,12 +118,12 @@ export function pageProvider(files: ApiFiles): DataProvider {
         page(filename): Page | undefined {
             return pages.get(filename) ?? aliases.get(withoutExtension(filename));
         },
-        related(page): Card[] {
+        related(page): CardProducer[] {
             return [...pages.values()]
                 .filter(partial(relatedFilter, page))
                 .map(partial(toCard, partial(relatedMdFilter, page)));
         },
-        search(query): Card[] {
+        search(query): CardProducer[] {
             return [...pages.values()]
                 .filter(partial(searchFilter, query.toLowerCase()))
                 .map(partial(toCard, partial(searchMdFilter, query)));

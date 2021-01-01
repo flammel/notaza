@@ -1,9 +1,8 @@
 import { ApiFiles } from '../api';
-import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { memoize, partial, withoutExtension } from '../util';
-import { DataProvider, IndexEntry } from './types';
+import { curry, memoize, withoutExtension } from '../util';
+import { DataProvider, IndexEntry, CardProducer } from './types';
 import { getFences, addTag, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Bookmark {
@@ -64,14 +63,14 @@ function parseBookmarks(tomlStr: string): Bookmark[] {
     }
 }
 
-function toCard(bookmark: Bookmark): Card {
+function toCard(bookmark: Bookmark, markdownRenderer: (md: string) => string): Card {
     return {
         type: 'bookmark',
         url: bookmark.url,
         title: bookmark.title,
         subtitle: bookmark.url,
         tags: bookmark.tags,
-        content: [notazamd().render(bookmark.description)],
+        content: [markdownRenderer(bookmark.description)],
     };
 }
 
@@ -115,11 +114,11 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
         page(): Page | undefined {
             return undefined;
         },
-        related(page): Card[] {
-            return bookmarks.filter(partial(relatedFilter, page)).map(toCard);
+        related(page): CardProducer[] {
+            return bookmarks.filter(curry(relatedFilter)(page)).map(curry(toCard));
         },
-        search(query): Card[] {
-            return bookmarks.filter(partial(searchFilter, query.toLowerCase())).map(toCard);
+        search(query): CardProducer[] {
+            return bookmarks.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));
         },
         styles(): Style[] {
             return [];

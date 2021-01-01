@@ -1,9 +1,8 @@
 import { ApiFiles } from '../api';
-import { notazamd } from '../markdown';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
-import { memoize, partial, withoutExtension } from '../util';
-import { DataProvider, IndexEntry } from './types';
+import { curry, memoize, withoutExtension } from '../util';
+import { DataProvider, IndexEntry, CardProducer } from './types';
 import { getFences, addTag, updateFiles, pageNames, disjoint, getReferences } from './util';
 
 interface Tweet {
@@ -67,14 +66,14 @@ function parseTweets(tomlStr: string): Tweet[] {
     }
 }
 
-function toCard(tweet: Tweet): Card {
+function toCard(tweet: Tweet, markdownRenderer: (md: string) => string): Card {
     return {
         type: 'tweet',
         url: tweet.url,
         title: '@' + tweet.userHandle,
         subtitle: 'on ' + tweet.date,
         tags: tweet.tags,
-        content: [tweet.tweet.replace(/\n/g, '<br>'), notazamd().render(tweet.notes)],
+        content: [tweet.tweet.replace(/\n/g, '<br>'), markdownRenderer(tweet.notes)],
     };
 }
 
@@ -117,11 +116,11 @@ export function tweetProvider(files: ApiFiles): DataProvider {
         page(): Page | undefined {
             return undefined;
         },
-        related(page): Card[] {
-            return tweets.filter(partial(relatedFilter, page)).map(toCard);
+        related(page): CardProducer[] {
+            return tweets.filter(curry(relatedFilter)(page)).map(curry(toCard));
         },
-        search(query): Card[] {
-            return tweets.filter(partial(searchFilter, query.toLowerCase())).map(toCard);
+        search(query): CardProducer[] {
+            return tweets.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));
         },
         styles(): Style[] {
             return [];

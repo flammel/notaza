@@ -69,3 +69,6 @@ export function assertNever(_x: never): never {
 export function partial<Arg1, Arg2, Res>(fn: (arg1: Arg1, arg2: Arg2) => Res, arg1: Arg1): (arg2: Arg2) => Res {
     return fn.bind(null, arg1);
 }
+export function curry<Arg1, Arg2, Res>(fn: (arg1: Arg1, arg2: Arg2) => Res): (arg1: Arg1) => (arg2: Arg2) => Res {
+    return (arg1: Arg1): ((arg: Arg2) => Res) => (arg2: Arg2): Res => fn(arg1, arg2);
+}
