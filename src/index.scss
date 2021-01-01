@@ -93,6 +93,7 @@ body {
 
     a + a,
     a + button,
+    button + a,
     button + button {
         border-left: 1px solid var(--primary-color-lighter);
     }
