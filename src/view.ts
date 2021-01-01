@@ -173,6 +173,37 @@ export function mountView(
                     viewportMargin: Infinity,
                     keyMap: 'default',
                     dragDrop: false,
+                    // https://github.com/codemirror/CodeMirror/issues/612
+                    indentUnit: 4,
+                    tabSize: 4,
+                    // https://github.com/codemirror/CodeMirror/issues/988#issuecomment-549644684
+                    extraKeys: {
+                        Tab: (cm) => {
+                            if (cm.getMode().name === 'null') {
+                                cm.execCommand('insertTab');
+                            } else {
+                                if (cm.somethingSelected()) {
+                                    cm.execCommand('indentMore');
+                                } else {
+                                    cm.execCommand('insertSoftTab');
+                                }
+                            }
+                        },
+                        'Shift-Tab': (cm) => cm.execCommand('indentLess'),
+                        "'['": (cm) => {
+                            if (cm.somethingSelected()) {
+                                const anchor = cm.getCursor('anchor');
+                                const head = cm.getCursor('head');
+                                cm.replaceSelection('[' + cm.getSelection() + ']');
+                                cm.setSelection(
+                                    CodeMirror.Pos(anchor.line, anchor.ch + 1),
+                                    CodeMirror.Pos(head.line, head.ch + 1),
+                                );
+                            } else {
+                                cm.replaceSelection('[');
+                            }
+                        },
+                    },
                 },
             );
         } else if (newState.type === 'show') {
