@@ -1,4 +1,4 @@
-import { GithubApi } from './api';
+import { githubApi } from './api';
 import { mountView, ViewState } from './view';
 import { loadConfig } from './config';
 import { observable } from './observable';
@@ -20,7 +20,7 @@ function applyStyles(store: Store): void {
 
 async function init(): Promise<void> {
     const config = await loadConfig();
-    const api = new GithubApi(config.user, config.repo, config.token);
+    const api = githubApi(config.user, config.repo, config.token);
     const files = await api.loadFiles();
     const store = makeStore([pageProvider(files), tweetProvider(files), bookmarkProvider(files)]);
 
