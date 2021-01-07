@@ -178,7 +178,7 @@ export function mountView(
                     tabSize: 4,
                     // https://github.com/codemirror/CodeMirror/issues/988#issuecomment-549644684
                     extraKeys: {
-                        Tab: (cm) => {
+                        Tab: (cm): void => {
                             if (cm.getMode().name === 'null') {
                                 cm.execCommand('insertTab');
                             } else {
@@ -189,8 +189,8 @@ export function mountView(
                                 }
                             }
                         },
-                        'Shift-Tab': (cm) => cm.execCommand('indentLess'),
-                        "'['": (cm) => {
+                        'Shift-Tab': (cm): void => cm.execCommand('indentLess'),
+                        "'['": (cm): void => {
                             if (cm.somethingSelected()) {
                                 const anchor = cm.getCursor('anchor');
                                 const head = cm.getCursor('head');
