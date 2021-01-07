@@ -133,7 +133,7 @@ body {
     }
 }
 
-.card {
+.card__content {
     a,
     a:visited {
         color: var(--primary-color);
@@ -191,20 +191,54 @@ body {
 
     &__header {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
         padding-bottom: 0.5rem;
+        &:hover {
+            .card__edit {
+                display: block;
+            }
+        }
     }
     &__title {
         margin: 0;
         font-size: 1.17rem;
         font-weight: bold;
+        flex-grow: 1;
+        color: var(--primary-color);
+        text-decoration: none;
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+    &__edit {
+        display: none;
+        color: var(--font-color-light);
+        text-decoration: none;
     }
     &__subtitle {
         font-size: 0.875rem;
         color: var(--font-color-light);
+        flex-basis: 100%;
     }
     &__tags {
         padding-top: 0.5rem;
+        flex-basis: 100%;
+        display: flex;
+        gap: 0.5rem;
+    }
+    &__tag {
+        color: var(--primary-color);
+        text-decoration: none;
+        &:hover {
+            text-decoration: underline;
+        }
+        &::before {
+            content: '#';
+            color: var(--font-color-light);
+            letter-spacing: 2px;
+        }
     }
     &__content {
         border-top: 1px solid var(--border-color);
@@ -220,15 +254,6 @@ body {
 }
 ul {
     padding-left: 1.5rem;
-}
-
-.tag {
-    margin-right: 0.5rem;
-    &::before {
-        content: '#';
-        color: var(--font-color-light);
-        letter-spacing: 2px;
-    }
 }
 
 .CodeMirror {

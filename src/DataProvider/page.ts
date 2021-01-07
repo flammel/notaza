@@ -47,6 +47,7 @@ function toCard(blockFilter: BlockFilter, page: Page): CardProducer {
     const blocks = getBlocks(page).filter(blockFilter);
     return (): Card => ({
         type: 'page',
+        filename: page.filename,
         url: page.filename,
         title: page.title,
         tags: [],

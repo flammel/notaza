@@ -1,4 +1,4 @@
-import { ApiFiles } from '../api';
+import { ApiFile, ApiFiles } from '../api';
 import { Card, Page, Style } from '../model';
 import * as toml from '../toml';
 import { curry, memoize, withoutExtension } from '../util';
@@ -6,6 +6,7 @@ import { DataProvider, IndexEntry, CardProducer } from './types';
 import { getFences, addTag, updateFiles, getReferences, disjoint, pageNames } from './util';
 
 interface Bookmark {
+    readonly filename: string;
     readonly id: string;
     readonly date: string;
     readonly url: string;
@@ -14,7 +15,7 @@ interface Bookmark {
     readonly description: string;
 }
 
-function parseBookmark(tokens: toml.Token[], idx: number): Bookmark | undefined {
+function parseBookmark(filename: string, tokens: toml.Token[], idx: number): Bookmark | undefined {
     const header = tokens[idx];
     const id = tokens[idx + 1];
     const date = tokens[idx + 2];
@@ -33,6 +34,7 @@ function parseBookmark(tokens: toml.Token[], idx: number): Bookmark | undefined 
         description?.type === 'keyValue'
     ) {
         return {
+            filename,
             id: id.value,
             date: date.value,
             url: url.value,
@@ -46,12 +48,12 @@ function parseBookmark(tokens: toml.Token[], idx: number): Bookmark | undefined 
     }
 }
 
-function parseBookmarks(tomlStr: string): Bookmark[] {
+function parseBookmarks(file: ApiFile, tomlStr: string): Bookmark[] {
     const result = toml.parse(tomlStr.split('\n'));
     if (result.type === 'success') {
         const bookmarks: Bookmark[] = [];
         for (let idx = 0; idx < result.tokens.length; idx = idx + 7) {
-            const bookmark = parseBookmark(result.tokens, idx);
+            const bookmark = parseBookmark(file.filename, result.tokens, idx);
             if (bookmark) {
                 bookmarks.push(bookmark);
             }
@@ -66,6 +68,7 @@ function parseBookmarks(tomlStr: string): Bookmark[] {
 function toCard(bookmark: Bookmark, markdownRenderer: (md: string) => string): Card {
     return {
         type: 'bookmark',
+        filename: bookmark.filename,
         url: bookmark.url,
         title: bookmark.title,
         subtitle: bookmark.url,
@@ -102,7 +105,7 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
     const bookmarks = getFences(files)
         .filter(({ info }) => info === 'bookmark')
         .flatMap(({ file, content }) =>
-            parseBookmarks(content).map((bookmark) => addTag(withoutExtension(file.filename), bookmark)),
+            parseBookmarks(file, content).map((bookmark) => addTag(withoutExtension(file.filename), bookmark)),
         );
     const indexEntries = bookmarks.flatMap((bookmark) =>
         bookmark.tags.map((tag) => ({ url: tag + '.md', title: tag })),

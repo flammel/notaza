@@ -11,8 +11,9 @@ export interface Page {
 
 export interface Card {
     readonly type: string;
-    readonly url?: string;
     readonly title: string;
+    readonly filename: string;
+    readonly url?: string;
     readonly subtitle?: string;
     readonly tags: string[];
     readonly content: string[];

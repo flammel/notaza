@@ -10,7 +10,7 @@ import 'codemirror/mode/gfm/gfm';
 import { AppEvent } from './event';
 
 function tagsHtml(tags: string[]): string {
-    return tags.map((tag) => `<a href="#/${tag}.md" class="tag">${tag}</a>`).join(' ');
+    return tags.map((tag) => `<a href="#/${tag}.md" class="card__tag">${tag}</a>`).join(' ');
 }
 
 function cardHtml(card: Card): string {
@@ -27,6 +27,7 @@ function cardHtml(card: Card): string {
                 <a class="card__title" href="${url}" ${linkAttr}>
                     ${card.title}
                 </a>
+                <a class="card__edit" href="#/${card.filename}?edit">edit</a>
                 ${subtitle}
                 ${tags}
             </div>
@@ -213,7 +214,7 @@ export function mountView(
             $saveLink.classList.add('hidden');
             $cancelLink.classList.add('hidden');
             $content.innerHTML = `
-                <div class="card">${page.html}</div>
+                <div class="card"><div class="card__content">${page.html}</div></div>
                 ${page.cards.map((card) => cardHtml(card)).join('')}
             `;
             if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
