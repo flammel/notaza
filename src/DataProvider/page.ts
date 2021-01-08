@@ -1,9 +1,9 @@
 import Token from 'markdown-it/lib/token';
 import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
-import { Style, Card } from '../model';
+import { Style, Card, SearchResult } from '../model';
 import { memoize, withoutExtension, curry } from '../util';
-import { CardProducer, DataProvider, IndexEntry } from './types';
+import { DataProvider, IndexEntry, MarkdownRenderer } from './types';
 import { getFences, updateFiles, getReferences, disjoint, cardNames } from './util';
 
 type FrontMatter = Record<string, string | undefined>;
@@ -53,16 +53,26 @@ const getBlocks = memoize((page: Page): Block[] => {
 
 type BlockFilter = (block: Block) => boolean;
 
-function toCard(blockFilter: BlockFilter, page: Page): CardProducer {
+function toFilteredCard(blockFilter: BlockFilter, page: Page): Card {
     const blocks = getBlocks(page).filter(blockFilter);
-    return (): Card => ({
+    return {
         type: 'page',
         filename: page.filename,
         url: page.filename,
         title: page.title,
         tags: [],
         content: [`<ul>${blocks.map((b) => '<li>' + notazamd().renderTokens(b.tokens) + '</li>').join('')}</ul>`],
-    });
+    };
+}
+function toCard(mdRenderer: MarkdownRenderer, page: Page): Card {
+    return {
+        type: 'page',
+        filename: page.filename,
+        url: page.filename,
+        title: page.title,
+        tags: [],
+        content: [mdRenderer(page.body)],
+    };
 }
 
 function searchFilter(query: string, page: Page): boolean {
@@ -111,10 +121,10 @@ function makePage(filename: string, content: string): Page {
     };
 }
 
-export function pageProvider(files: ApiFiles): DataProvider {
+export function pageProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
     const pages = files
-        .filter((apiFile) => apiFile.filename.endsWith('.md'))
-        .map((apiFile) => makePage(apiFile.filename, apiFile.content));
+        .filter(({ filename, content }) => filename.endsWith('.md') && !content.startsWith('``` '))
+        .map(({ filename, content }) => makePage(filename, content));
     return {
         indexEntries(): IndexEntry[] {
             return pages.map((page) => ({
@@ -124,15 +134,15 @@ export function pageProvider(files: ApiFiles): DataProvider {
         },
         card(filename): Card | undefined {
             const page = pages.find((page) => page.filename === filename);
-            return page ? toCard(() => true, page)(notazamd().render) : undefined;
+            return page ? toCard(mdRenderer, page) : undefined;
         },
-        related(card): CardProducer[] {
-            return pages.filter(curry(relatedFilter)(card)).map(curry(toCard)(curry(relatedMdFilter)(card)));
+        related(card): Card[] {
+            return pages.filter(curry(relatedFilter)(card)).map(curry(toFilteredCard)(curry(relatedMdFilter)(card)));
         },
-        search(query): CardProducer[] {
+        search(query): SearchResult[] {
             return pages
                 .filter(curry(searchFilter)(query.toLowerCase()))
-                .map(curry(toCard)(curry(searchMdFilter)(query)));
+                .map(curry(toFilteredCard)(curry(searchMdFilter)(query)));
         },
         styles(): Style[] {
             return getFences([...files.values()])
@@ -140,7 +150,7 @@ export function pageProvider(files: ApiFiles): DataProvider {
                 .map(({ content }) => content);
         },
         update(filename, content): DataProvider {
-            return pageProvider(updateFiles(files, { filename, content }));
+            return pageProvider(updateFiles(files, { filename, content }), mdRenderer);
         },
     };
 }

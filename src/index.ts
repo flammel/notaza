@@ -10,6 +10,7 @@ import { pageProvider } from './DataProvider/page';
 import { bookmarkProvider } from './DataProvider/bookmark';
 
 import './index.scss';
+import { notazamd } from './markdown';
 
 const $style = document.createElement('style');
 document.head.appendChild($style);
@@ -21,7 +22,11 @@ async function init(): Promise<void> {
     const config = await loadConfig();
     const api = githubApi(config.user, config.repo, config.token);
     const files = await api.loadFiles();
-    const store = makeStore([pageProvider(files), tweetProvider(files), bookmarkProvider(files)]);
+    const store = makeStore([
+        pageProvider(files, notazamd().render),
+        tweetProvider(files, notazamd().render),
+        bookmarkProvider(files, notazamd().render),
+    ]);
 
     const viewState$ = observable<ViewState>();
     const appEvents$ = observable<AppEvent>();

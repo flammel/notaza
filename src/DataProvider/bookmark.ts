@@ -1,8 +1,8 @@
 import { ApiFile, ApiFiles } from '../api';
-import { Card, Style } from '../model';
+import { Card, SearchResult, Style } from '../model';
 import * as toml from '../toml';
 import { curry, memoize } from '../util';
-import { DataProvider, IndexEntry, CardProducer } from './types';
+import { DataProvider, IndexEntry, MarkdownRenderer } from './types';
 import { getFences, updateFiles, getReferences, disjoint, cardNames } from './util';
 
 interface Bookmark {
@@ -65,7 +65,7 @@ function parseBookmarks(file: ApiFile, tomlStr: string): Bookmark[] {
     }
 }
 
-function toCard(bookmark: Bookmark, markdownRenderer: (md: string) => string): Card {
+function toCard(mdRenderer: MarkdownRenderer, bookmark: Bookmark): Card {
     return {
         type: 'bookmark',
         filename: bookmark.filename,
@@ -73,7 +73,7 @@ function toCard(bookmark: Bookmark, markdownRenderer: (md: string) => string): C
         title: bookmark.title,
         subtitle: bookmark.url,
         tags: bookmark.tags,
-        content: [markdownRenderer(bookmark.description)],
+        content: [mdRenderer(bookmark.description)],
     };
 }
 
@@ -101,7 +101,7 @@ function relatedFilter(card: Card, bookmark: Bookmark): boolean {
     return !disjoint(cardNames(card), getOutgoingLinks(bookmark));
 }
 
-export function bookmarkProvider(files: ApiFiles): DataProvider {
+export function bookmarkProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
     const bookmarks = getFences(files)
         .filter(({ info }) => info === 'bookmark')
         .flatMap(({ file, content }) => parseBookmarks(file, content));
@@ -112,20 +112,21 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return indexEntries;
         },
-        card(): Card | undefined {
-            return undefined;
+        card(filename): Card | undefined {
+            const bookmark = bookmarks.find((bm) => bm.filename === filename);
+            return bookmark ? toCard(mdRenderer, bookmark) : undefined;
         },
-        related(card): CardProducer[] {
-            return bookmarks.filter(curry(relatedFilter)(card)).map(curry(toCard));
+        related(card): Card[] {
+            return bookmarks.filter(curry(relatedFilter)(card)).map(curry(toCard)(mdRenderer));
         },
-        search(query): CardProducer[] {
-            return bookmarks.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));
+        search(query): SearchResult[] {
+            return bookmarks.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard)(mdRenderer));
         },
         styles(): Style[] {
             return [];
         },
         update(filename, content): DataProvider {
-            return bookmarkProvider(updateFiles(files, { filename, content }));
+            return bookmarkProvider(updateFiles(files, { filename, content }), mdRenderer);
         },
     };
 }

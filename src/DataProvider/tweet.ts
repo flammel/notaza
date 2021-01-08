@@ -1,8 +1,8 @@
 import { ApiFile, ApiFiles } from '../api';
-import { Card, Style } from '../model';
+import { Card, SearchResult, Style } from '../model';
 import * as toml from '../toml';
 import { curry, memoize } from '../util';
-import { DataProvider, IndexEntry, CardProducer } from './types';
+import { DataProvider, IndexEntry, MarkdownRenderer } from './types';
 import { getFences, updateFiles, cardNames, disjoint, getReferences } from './util';
 
 interface Tweet {
@@ -68,7 +68,7 @@ function parseTweets(file: ApiFile, tomlStr: string): Tweet[] {
     }
 }
 
-function toCard(tweet: Tweet, markdownRenderer: (md: string) => string): Card {
+function toCard(mdRenderer: MarkdownRenderer, tweet: Tweet): Card {
     return {
         type: 'tweet',
         filename: tweet.filename,
@@ -76,7 +76,7 @@ function toCard(tweet: Tweet, markdownRenderer: (md: string) => string): Card {
         title: '@' + tweet.userHandle,
         subtitle: 'on ' + tweet.date,
         tags: tweet.tags,
-        content: [tweet.tweet.replace(/\n/g, '<br>'), markdownRenderer(tweet.notes)],
+        content: [tweet.tweet.replace(/\n/g, '<br>'), mdRenderer(tweet.notes)],
     };
 }
 
@@ -105,7 +105,7 @@ function relatedFilter(card: Card, tweet: Tweet): boolean {
     return !disjoint(cardNames(card), getOutgoingLinks(tweet));
 }
 
-export function tweetProvider(files: ApiFiles): DataProvider {
+export function tweetProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
     const tweets = getFences(files)
         .filter(({ info }) => info === 'tweet')
         .flatMap(({ file, content }) => parseTweets(file, content));
@@ -114,20 +114,21 @@ export function tweetProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return indexEntries;
         },
-        card(): Card | undefined {
-            return undefined;
+        card(filename): Card | undefined {
+            const tweet = tweets.find((tweet) => tweet.filename === filename);
+            return tweet ? toCard(mdRenderer, tweet) : undefined;
         },
-        related(card): CardProducer[] {
-            return tweets.filter(curry(relatedFilter)(card)).map(curry(toCard));
+        related(card): Card[] {
+            return tweets.filter(curry(relatedFilter)(card)).map(curry(toCard)(mdRenderer));
         },
-        search(query): CardProducer[] {
-            return tweets.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));
+        search(query): SearchResult[] {
+            return tweets.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard)(mdRenderer));
         },
         styles(): Style[] {
             return [];
         },
         update(filename, content): DataProvider {
-            return tweetProvider(updateFiles(files, { filename, content }));
+            return tweetProvider(updateFiles(files, { filename, content }), mdRenderer);
         },
     };
 }

@@ -1,6 +1,5 @@
 import { Card, SearchResult } from './model';
 import { DataProvider, IndexEntry } from './DataProvider/types';
-import { notazamd } from './markdown';
 import { withoutExtension } from './util';
 
 export interface Store {
@@ -28,18 +27,13 @@ export function makeStore(dataProviders: DataProvider[]): Store {
             );
         },
         related(card: Card): Card[] {
-            return dataProviders
-                .flatMap((provider) => provider.related(card))
-                .map((producer) => producer(notazamd().render));
+            return dataProviders.flatMap((provider) => provider.related(card));
         },
         search(query: string): SearchResult[] {
             if (query.length < 3) {
                 return [];
             }
-            return dataProviders
-                .flatMap((provider) => provider.search(query))
-                .map((producer) => producer(notazamd().render))
-                .sort(searchResultSort(query));
+            return dataProviders.flatMap((provider) => provider.search(query)).sort(searchResultSort(query));
         },
         styles(): string[] {
             return dataProviders.flatMap((provider) => provider.styles());
