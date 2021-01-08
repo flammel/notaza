@@ -44,6 +44,10 @@ export function withoutExtension(filename: string): string {
 export function urlize(str: string): string {
     return str
         .toLowerCase()
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+        .replace(/ß/g, 'ss')
         .replace(/ /g, '-')
         .replace(/[^a-z0-9-]/g, '');
 }
