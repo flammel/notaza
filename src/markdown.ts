@@ -86,7 +86,7 @@ const hashtags: MarkdownIt.PluginSimple = (md): void => {
 };
 
 const wikilinks: MarkdownIt.PluginSimple = (md): void => {
-    const regex = new RegExp(/(^|\s|\()\[\[([\w -_\/]+)\]\]($|\s|.|,|-|\/|:|\))/g);
+    const regex = new RegExp(/\[\[([^\]]+)\]\]/g);
     md.core.ruler.after('inline', 'wikilink', (state: StateCore): boolean => {
         for (const blockToken of state.tokens) {
             if (blockToken.type === 'inline') {
