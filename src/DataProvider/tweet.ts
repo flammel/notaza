@@ -102,7 +102,7 @@ const getOutgoingLinks = memoize(
 );
 
 function relatedFilter(card: Card, tweet: Tweet): boolean {
-    return !disjoint(cardNames(card), getOutgoingLinks(tweet));
+    return card.url !== tweet.url && !disjoint(cardNames(card), getOutgoingLinks(tweet));
 }
 
 export function tweetProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {

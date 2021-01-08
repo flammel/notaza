@@ -98,7 +98,7 @@ const getOutgoingLinks = memoize(
 );
 
 function relatedFilter(card: Card, bookmark: Bookmark): boolean {
-    return !disjoint(cardNames(card), getOutgoingLinks(bookmark));
+    return card.title !== bookmark.title && !disjoint(cardNames(card), getOutgoingLinks(bookmark));
 }
 
 export function bookmarkProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
@@ -114,7 +114,9 @@ export function bookmarkProvider(files: ApiFiles, mdRenderer: MarkdownRenderer):
             return indexEntries;
         },
         card(filename): Card | undefined {
-            const bookmark = bookmarks.find((bm) => bm.filename === filename || urlize(bm.title) === withoutExtension(filename));
+            const bookmark = bookmarks.find(
+                (bm) => bm.filename === filename || urlize(bm.title) === withoutExtension(filename),
+            );
             return bookmark ? toCard(mdRenderer, bookmark) : undefined;
         },
         related(card): Card[] {
