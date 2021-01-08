@@ -1,7 +1,7 @@
 import { ApiFile, ApiFiles } from '../api';
 import { Card, SearchResult, Style } from '../model';
 import * as toml from '../toml';
-import { curry, memoize } from '../util';
+import { curry, memoize, urlize, withoutExtension } from '../util';
 import { DataProvider, IndexEntry, MarkdownRenderer } from './types';
 import { getFences, updateFiles, getReferences, disjoint, cardNames } from './util';
 
@@ -102,7 +102,8 @@ function relatedFilter(card: Card, bookmark: Bookmark): boolean {
 }
 
 export function bookmarkProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
-    const bookmarks = getFences(files)
+    const bookmarks = files
+        .flatMap(getFences)
         .filter(({ info }) => info === 'bookmark')
         .flatMap(({ file, content }) => parseBookmarks(file, content));
     const indexEntries = bookmarks.flatMap((bookmark) =>
@@ -113,7 +114,7 @@ export function bookmarkProvider(files: ApiFiles, mdRenderer: MarkdownRenderer):
             return indexEntries;
         },
         card(filename): Card | undefined {
-            const bookmark = bookmarks.find((bm) => bm.filename === filename);
+            const bookmark = bookmarks.find((bm) => bm.filename === filename || urlize(bm.title) === withoutExtension(filename));
             return bookmark ? toCard(mdRenderer, bookmark) : undefined;
         },
         related(card): Card[] {

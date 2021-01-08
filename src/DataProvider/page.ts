@@ -145,7 +145,8 @@ export function pageProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): Dat
                 .map(curry(toFilteredCard)(curry(searchMdFilter)(query)));
         },
         styles(): Style[] {
-            return getFences([...files.values()])
+            return files
+                .flatMap(getFences)
                 .filter(({ info }) => info === 'notaza-css')
                 .map(({ content }) => content);
         },

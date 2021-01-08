@@ -106,7 +106,8 @@ function relatedFilter(card: Card, tweet: Tweet): boolean {
 }
 
 export function tweetProvider(files: ApiFiles, mdRenderer: MarkdownRenderer): DataProvider {
-    const tweets = getFences(files)
+    const tweets = files
+        .flatMap(getFences)
         .filter(({ info }) => info === 'tweet')
         .flatMap(({ file, content }) => parseTweets(file, content));
     const indexEntries = tweets.flatMap((tweet) => tweet.tags.map((tag) => ({ url: tag + '.md', title: tag })));

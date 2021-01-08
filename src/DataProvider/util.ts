@@ -10,19 +10,15 @@ interface Fence {
     readonly content: string;
 }
 
-export const getFences = memoize((apiFiles: ApiFiles): Fence[] =>
-    apiFiles
-        .filter((apiFile) => apiFile.filename.endsWith('.md'))
-        .flatMap((file) =>
-            notazamd()
-                .parse(file.content)
-                .filter((token) => token.type === 'fence')
-                .map((token) => ({ file, info: token.info.trim(), content: token.content })),
-        ),
+export const getFences = memoize((file: ApiFile): Fence[] =>
+    notazamd()
+        .parse(file.content)
+        .filter((token) => token.type === 'fence')
+        .map((token) => ({ file, info: token.info.trim(), content: token.content })),
 );
 
 export function cardNames(card: Card): Set<string> {
-    return new Set([withoutExtension(card.filename), card.title]);
+    return new Set([withoutExtension(card.filename), card.title, urlize(card.title)]);
 }
 
 export function updateFiles(files: ApiFiles, file: ApiFile): ApiFiles {
