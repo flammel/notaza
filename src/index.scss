@@ -196,7 +196,8 @@ body {
         flex-wrap: wrap;
         padding-bottom: 0.5rem;
         &:hover {
-            .card__edit {
+            .card__edit,
+            .card__show {
                 display: block;
             }
         }
@@ -212,10 +213,15 @@ body {
             text-decoration: underline;
         }
     }
-    &__edit {
+    &__edit,
+    &__show {
         display: none;
         color: var(--font-color-light);
         text-decoration: none;
+        margin-left: 0.5rem;
+        &:hover {
+            text-decoration: underline;
+        }
     }
     &__subtitle {
         font-size: 0.875rem;

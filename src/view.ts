@@ -20,6 +20,7 @@ function cardHtml(card: Card): string {
         card.url?.startsWith('https://') || card.url?.startsWith('http://')
             ? 'target="_blank" rel="noreferrer noopener"'
             : '';
+    const showLink = url.startsWith('#/') ? '' : `<a href="#/${card.filename}" class="card__show">show</a>`;
     return `
         <div class="card">
             <div class="card__header">
@@ -27,6 +28,7 @@ function cardHtml(card: Card): string {
                     ${card.title}
                 </a>
                 <a class="card__edit" href="#/${card.filename}?edit">edit</a>
+                ${showLink}
                 ${subtitle}
                 ${tags}
             </div>
