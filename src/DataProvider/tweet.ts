@@ -1,9 +1,9 @@
 import { ApiFile, ApiFiles } from '../api';
 import { Card, Style } from '../model';
 import * as toml from '../toml';
-import { curry, memoize, withoutExtension } from '../util';
+import { curry, memoize } from '../util';
 import { DataProvider, IndexEntry, CardProducer } from './types';
-import { getFences, addTag, updateFiles, cardNames, disjoint, getReferences } from './util';
+import { getFences, updateFiles, cardNames, disjoint, getReferences } from './util';
 
 interface Tweet {
     readonly filename: string;
@@ -108,9 +108,7 @@ function relatedFilter(card: Card, tweet: Tweet): boolean {
 export function tweetProvider(files: ApiFiles): DataProvider {
     const tweets = getFences(files)
         .filter(({ info }) => info === 'tweet')
-        .flatMap(({ file, content }) =>
-            parseTweets(file, content).map((tweet) => addTag(withoutExtension(file.filename), tweet)),
-        );
+        .flatMap(({ file, content }) => parseTweets(file, content));
     const indexEntries = tweets.flatMap((tweet) => tweet.tags.map((tag) => ({ url: tag + '.md', title: tag })));
     return {
         indexEntries(): IndexEntry[] {

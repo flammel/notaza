@@ -1,9 +1,9 @@
 import { ApiFile, ApiFiles } from '../api';
 import { Card, Style } from '../model';
 import * as toml from '../toml';
-import { curry, memoize, withoutExtension } from '../util';
+import { curry, memoize } from '../util';
 import { DataProvider, IndexEntry, CardProducer } from './types';
-import { getFences, addTag, updateFiles, getReferences, disjoint, cardNames } from './util';
+import { getFences, updateFiles, getReferences, disjoint, cardNames } from './util';
 
 interface Bookmark {
     readonly filename: string;
@@ -104,9 +104,7 @@ function relatedFilter(card: Card, bookmark: Bookmark): boolean {
 export function bookmarkProvider(files: ApiFiles): DataProvider {
     const bookmarks = getFences(files)
         .filter(({ info }) => info === 'bookmark')
-        .flatMap(({ file, content }) =>
-            parseBookmarks(file, content).map((bookmark) => addTag(withoutExtension(file.filename), bookmark)),
-        );
+        .flatMap(({ file, content }) => parseBookmarks(file, content));
     const indexEntries = bookmarks.flatMap((bookmark) =>
         bookmark.tags.map((tag) => ({ url: tag + '.md', title: tag })),
     );

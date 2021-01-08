@@ -21,10 +21,6 @@ export const getFences = memoize((apiFiles: ApiFiles): Fence[] =>
         ),
 );
 
-export function addTag<T extends { tags: string[] }>(tag: string, tagged: T): T {
-    return { ...tagged, tags: [...new Set([...tagged.tags, tag])] };
-}
-
 export function cardNames(card: Card): Set<string> {
     return new Set([withoutExtension(card.filename), card.title]);
 }
