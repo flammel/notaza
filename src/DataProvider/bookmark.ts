@@ -1,9 +1,9 @@
 import { ApiFile, ApiFiles } from '../api';
-import { Card, Page, Style } from '../model';
+import { Card, Style } from '../model';
 import * as toml from '../toml';
 import { curry, memoize, withoutExtension } from '../util';
 import { DataProvider, IndexEntry, CardProducer } from './types';
-import { getFences, addTag, updateFiles, getReferences, disjoint, pageNames } from './util';
+import { getFences, addTag, updateFiles, getReferences, disjoint, cardNames } from './util';
 
 interface Bookmark {
     readonly filename: string;
@@ -97,8 +97,8 @@ const getOutgoingLinks = memoize(
     },
 );
 
-function relatedFilter(page: Page, bookmark: Bookmark): boolean {
-    return !disjoint(pageNames(page), getOutgoingLinks(bookmark));
+function relatedFilter(card: Card, bookmark: Bookmark): boolean {
+    return !disjoint(cardNames(card), getOutgoingLinks(bookmark));
 }
 
 export function bookmarkProvider(files: ApiFiles): DataProvider {
@@ -114,11 +114,11 @@ export function bookmarkProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return indexEntries;
         },
-        page(): Page | undefined {
+        card(): Card | undefined {
             return undefined;
         },
-        related(page): CardProducer[] {
-            return bookmarks.filter(curry(relatedFilter)(page)).map(curry(toCard));
+        related(card): CardProducer[] {
+            return bookmarks.filter(curry(relatedFilter)(card)).map(curry(toCard));
         },
         search(query): CardProducer[] {
             return bookmarks.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));

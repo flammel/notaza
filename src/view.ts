@@ -1,6 +1,5 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
-import { PageViewModel } from './viewModel';
 import { assertNever, debounce } from './util';
 import { Card, SearchResult } from './model';
 import * as CodeMirror from 'codemirror';
@@ -40,7 +39,8 @@ function cardHtml(card: Card): string {
 
 interface ShowState {
     type: 'show';
-    page: PageViewModel;
+    card: Card;
+    related: Card[];
 }
 interface EditState {
     type: 'edit';
@@ -208,21 +208,15 @@ export function mountView(
                 },
             );
         } else if (newState.type === 'show') {
-            const page = newState.page;
             $editLink.classList.remove('hidden');
-            $editLink.setAttribute('href', '/#/' + newState.page.filename + '?edit');
+            $editLink.setAttribute('href', '/#/' + newState.card.filename + '?edit');
             $saveLink.classList.add('hidden');
             $cancelLink.classList.add('hidden');
             $content.innerHTML = `
-                <div class="card"><div class="card__content">${page.html}</div></div>
-                ${page.cards.map((card) => cardHtml(card)).join('')}
+                ${cardHtml(newState.card)}
+                ${newState.related.map((card) => cardHtml(card)).join('')}
             `;
-            if (!($content.firstElementChild?.firstElementChild instanceof HTMLHeadingElement)) {
-                const $title = document.createElement('h1');
-                $title.innerHTML = page.title;
-                $content.firstElementChild?.insertAdjacentElement('afterbegin', $title);
-            }
-            document.title = 'KB | ' + page.title;
+            document.title = 'KB | ' + newState.card.title;
             hideSearch();
             contentMark.unmark();
             contentMark.mark($searchInput.value);

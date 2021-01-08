@@ -1,9 +1,9 @@
 import { ApiFile, ApiFiles } from '../api';
-import { Card, Page, Style } from '../model';
+import { Card, Style } from '../model';
 import * as toml from '../toml';
 import { curry, memoize, withoutExtension } from '../util';
 import { DataProvider, IndexEntry, CardProducer } from './types';
-import { getFences, addTag, updateFiles, pageNames, disjoint, getReferences } from './util';
+import { getFences, addTag, updateFiles, cardNames, disjoint, getReferences } from './util';
 
 interface Tweet {
     readonly filename: string;
@@ -101,8 +101,8 @@ const getOutgoingLinks = memoize(
     },
 );
 
-function relatedFilter(page: Page, tweet: Tweet): boolean {
-    return !disjoint(pageNames(page), getOutgoingLinks(tweet));
+function relatedFilter(card: Card, tweet: Tweet): boolean {
+    return !disjoint(cardNames(card), getOutgoingLinks(tweet));
 }
 
 export function tweetProvider(files: ApiFiles): DataProvider {
@@ -116,11 +116,11 @@ export function tweetProvider(files: ApiFiles): DataProvider {
         indexEntries(): IndexEntry[] {
             return indexEntries;
         },
-        page(): Page | undefined {
+        card(): Card | undefined {
             return undefined;
         },
-        related(page): CardProducer[] {
-            return tweets.filter(curry(relatedFilter)(page)).map(curry(toCard));
+        related(card): CardProducer[] {
+            return tweets.filter(curry(relatedFilter)(card)).map(curry(toCard));
         },
         search(query): CardProducer[] {
             return tweets.filter(curry(searchFilter)(query.toLowerCase())).map(curry(toCard));

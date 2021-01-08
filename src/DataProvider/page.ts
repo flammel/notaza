@@ -1,11 +1,21 @@
 import Token from 'markdown-it/lib/token';
 import { ApiFiles } from '../api';
 import { notazamd } from '../markdown';
-import { Page, FrontMatter, Style, Card } from '../model';
-import { memoize, withoutExtension, partial } from '../util';
+import { Style, Card } from '../model';
+import { memoize, withoutExtension, curry } from '../util';
 import { CardProducer, DataProvider, IndexEntry } from './types';
-import { pageAliases, getFences, updateFiles, getReferences, disjoint, pageNames } from './util';
+import { getFences, updateFiles, getReferences, disjoint, cardNames } from './util';
 
+type FrontMatter = Record<string, string | undefined>;
+
+interface Page {
+    readonly filename: string;
+    readonly id: string;
+    readonly title: string;
+    readonly frontMatter: FrontMatter;
+    readonly body: string;
+    readonly raw: string;
+}
 interface Block {
     tokens: Token[];
 }
@@ -59,12 +69,12 @@ function searchFilter(query: string, page: Page): boolean {
     return page.title.toLowerCase().includes(query) || page.body.toLowerCase().includes(query);
 }
 
-function relatedFilter(page: Page, other: Page): boolean {
-    return other.filename !== page.filename && !disjoint(pageNames(page), getReferences(other.body));
+function relatedFilter(card: Card, other: Page): boolean {
+    return other.filename !== card.filename && !disjoint(cardNames(card), getReferences(other.body));
 }
 
-function relatedMdFilter(page: Page, block: Block): boolean {
-    return !disjoint(pageNames(page), getReferences(block.tokens));
+function relatedMdFilter(card: Card, block: Block): boolean {
+    return !disjoint(cardNames(card), getReferences(block.tokens));
 }
 
 function searchMdFilter(query: string, block: Block): boolean {
@@ -102,32 +112,27 @@ function makePage(filename: string, content: string): Page {
 }
 
 export function pageProvider(files: ApiFiles): DataProvider {
-    const pages = new Map(
-        files
-            .filter((apiFile) => apiFile.filename.endsWith('.md'))
-            .map((apiFile) => makePage(apiFile.filename, apiFile.content))
-            .map((page) => [page.filename, page]),
-    );
-    const aliases = new Map([...pages.values()].flatMap((page) => pageAliases(page).map((alias) => [alias, page])));
+    const pages = files
+        .filter((apiFile) => apiFile.filename.endsWith('.md'))
+        .map((apiFile) => makePage(apiFile.filename, apiFile.content));
     return {
         indexEntries(): IndexEntry[] {
-            return [...pages.values()].map((page) => ({
+            return pages.map((page) => ({
                 url: page.filename,
                 title: page.title,
             }));
         },
-        page(filename): Page | undefined {
-            return pages.get(filename) ?? aliases.get(withoutExtension(filename));
+        card(filename): Card | undefined {
+            const page = pages.find((page) => page.filename === filename);
+            return page ? toCard(() => true, page)(notazamd().render) : undefined;
         },
-        related(page): CardProducer[] {
-            return [...pages.values()]
-                .filter(partial(relatedFilter, page))
-                .map(partial(toCard, partial(relatedMdFilter, page)));
+        related(card): CardProducer[] {
+            return pages.filter(curry(relatedFilter)(card)).map(curry(toCard)(curry(relatedMdFilter)(card)));
         },
         search(query): CardProducer[] {
-            return [...pages.values()]
-                .filter(partial(searchFilter, query.toLowerCase()))
-                .map(partial(toCard, partial(searchMdFilter, query)));
+            return pages
+                .filter(curry(searchFilter)(query.toLowerCase()))
+                .map(curry(toCard)(curry(searchMdFilter)(query)));
         },
         styles(): Style[] {
             return getFences([...files.values()])

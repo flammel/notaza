@@ -1,11 +1,12 @@
-import { Page, Card, SearchResult } from './model';
+import { Card, SearchResult } from './model';
 import { DataProvider, IndexEntry } from './DataProvider/types';
 import { notazamd } from './markdown';
+import { withoutExtension } from './util';
 
 export interface Store {
     index: () => IndexEntry[];
-    page: (filename: string) => Page | undefined;
-    related: (page: Page) => Card[];
+    card: (filename: string) => Card | undefined;
+    related: (card: Card) => Card[];
     search: (query: string) => SearchResult[];
     styles: () => string[];
     update: (filename: string, content: string) => void;
@@ -20,15 +21,15 @@ export function makeStore(dataProviders: DataProvider[]): Store {
                 ).values(),
             ];
         },
-        page(filename: string): Page | undefined {
+        card(filename: string): Card | undefined {
             return dataProviders.reduce(
-                (page: Page | undefined, provider: DataProvider) => page ?? provider.page(filename),
+                (card: Card | undefined, provider: DataProvider) => card ?? provider.card(filename),
                 undefined,
             );
         },
-        related(page: Page): Card[] {
+        related(card: Card): Card[] {
             return dataProviders
-                .flatMap((provider) => provider.related(page))
+                .flatMap((provider) => provider.related(card))
                 .map((producer) => producer(notazamd().render));
         },
         search(query: string): SearchResult[] {
@@ -63,5 +64,42 @@ function searchResultSort(query: string): (a: SearchResult, b: SearchResult) => 
             return 1;
         }
         return 0;
+    };
+}
+
+export function getOrMakeCard(store: Store, filename: string): Card {
+    if (filename === '_index.md') {
+        return makeIndexCard(store.index());
+    }
+    if (filename === '') {
+        filename = 'index.md';
+    }
+    return store.card(filename) ?? makeCardFromFilename(filename);
+}
+
+function makeCardFromFilename(filename: string): Card {
+    return {
+        filename,
+        title: withoutExtension(filename),
+        tags: [],
+        type: 'page',
+        content: [],
+    };
+}
+
+function makeIndexCard(entries: IndexEntry[]): Card {
+    const content = [
+        '<ul>',
+        ...entries
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((entry) => `<li><a class="internal" href="/#/${entry.url}">${entry.title}</a></li>`),
+        '</ul>',
+    ].join('');
+    return {
+        filename: '_index.md',
+        title: 'Index',
+        type: 'index',
+        tags: [],
+        content: [content],
     };
 }

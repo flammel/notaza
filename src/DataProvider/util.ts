@@ -1,7 +1,7 @@
 import Token from 'markdown-it/lib/token';
 import { ApiFile, ApiFiles } from '../api';
 import { notazamd } from '../markdown';
-import { Page } from '../model';
+import { Card } from '../model';
 import { memoize, urlize, withoutExtension } from '../util';
 
 interface Fence {
@@ -25,28 +25,8 @@ export function addTag<T extends { tags: string[] }>(tag: string, tagged: T): T 
     return { ...tagged, tags: [...new Set([...tagged.tags, tag])] };
 }
 
-export function pageAliases(page: Page): string[] {
-    return (
-        page.frontMatter.aliases
-            ?.split(' ')
-            .map((alias) => alias.trim())
-            .filter((alias) => alias !== '') ?? []
-    );
-}
-
-export function pageNames(page: Page): Set<string> {
-    return new Set([...pageAliases(page), page.id]);
-}
-
-export function makePageFromFilename(filename: string): Page {
-    return {
-        filename,
-        frontMatter: {},
-        body: '',
-        title: withoutExtension(filename),
-        id: withoutExtension(filename),
-        raw: `---\ntitle: ${withoutExtension(filename)}\n---\n`,
-    };
+export function cardNames(card: Card): Set<string> {
+    return new Set([withoutExtension(card.filename), card.title]);
 }
 
 export function updateFiles(files: ApiFiles, file: ApiFile): ApiFiles {

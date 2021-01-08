@@ -2,8 +2,7 @@ import { githubApi } from './api';
 import { mountView, ViewState } from './view';
 import { loadConfig } from './config';
 import { observable } from './observable';
-import { makeStore, Store } from './store';
-import { pageViewModel } from './viewModel';
+import { getOrMakeCard, makeStore, Store } from './store';
 import { assertNever } from './util';
 import { AppEvent } from './event';
 import { tweetProvider } from './DataProvider/tweet';
@@ -33,17 +32,19 @@ async function init(): Promise<void> {
     const updateCurrentPage = (url: string): void => {
         const filename = url.replace('#/', '').replace('?edit', '');
         const editing = url.endsWith('?edit');
-        const pvm = pageViewModel(store, filename === '' ? 'index.md' : filename, editing);
         if (editing) {
+            const file = files.find((file) => file.filename === filename);
             viewState$.next({
                 type: 'edit',
-                filename: pvm.filename,
-                content: pvm.raw,
+                filename: filename,
+                content: file?.content ?? '',
             });
         } else {
+            const card = getOrMakeCard(store, filename);
             viewState$.next({
                 type: 'show',
-                page: pvm,
+                card: card,
+                related: store.related(card),
             });
         }
     };
