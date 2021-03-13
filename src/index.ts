@@ -2,15 +2,13 @@ import { githubApi } from './api';
 import { mountView, ViewState } from './view';
 import { loadConfig } from './config';
 import { observable } from './observable';
-import { getOrMakeCard, makeStore, Store } from './store';
+import { getOrMakeCard, makeStore } from './store';
 import { assertNever } from './util';
 import { AppEvent } from './event';
-import { tweetProvider } from './DataProvider/tweet';
-import { pageProvider } from './DataProvider/page';
-import { bookmarkProvider } from './DataProvider/bookmark';
+import { notazamd } from './markdown';
 
 import './index.scss';
-import { notazamd } from './markdown';
+import { Store } from './types';
 
 const $style = document.createElement('style');
 document.head.appendChild($style);
@@ -22,11 +20,7 @@ async function init(): Promise<void> {
     const config = await loadConfig();
     const api = githubApi(config.user, config.repo, config.token);
     const files = await api.loadFiles();
-    const store = makeStore([
-        pageProvider(files, notazamd().render),
-        tweetProvider(files, notazamd().render),
-        bookmarkProvider(files, notazamd().render),
-    ]);
+    const store = makeStore(files, notazamd().render);
 
     const viewState$ = observable<ViewState>();
     const appEvents$ = observable<AppEvent>();
@@ -38,11 +32,10 @@ async function init(): Promise<void> {
         const filename = url.replace('#/', '').replace('?edit', '');
         const editing = url.endsWith('?edit');
         if (editing) {
-            const file = files.find((file) => file.filename === filename);
             viewState$.next({
                 type: 'edit',
                 filename: filename,
-                content: file?.content ?? '',
+                content: store.rawContent(filename),
             });
         } else {
             const card = getOrMakeCard(store, filename);
@@ -53,13 +46,6 @@ async function init(): Promise<void> {
             });
         }
     };
-    const updateSearch = (query: string): void => {
-        viewState$.next({
-            type: 'search',
-            query: query,
-            results: store.search(query.toLowerCase().trim()),
-        });
-    };
     window.addEventListener('hashchange', () => {
         updateCurrentPage(window.location.hash);
     });
@@ -67,7 +53,11 @@ async function init(): Promise<void> {
     appEvents$.subscribe((event) => {
         switch (event.type) {
             case 'queryChange':
-                updateSearch(event.query);
+                viewState$.next({
+                    type: 'search',
+                    query: event.query,
+                    results: store.search(event.query.toLowerCase().trim()),
+                });
                 break;
             case 'saveClick':
                 api.updateFile(event.filename, event.content)

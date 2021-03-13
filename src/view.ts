@@ -1,40 +1,22 @@
 import { Observable } from './observable';
 import Mark from 'mark.js';
 import { assertNever, debounce } from './util';
-import { Card, SearchResult } from './model';
+import { Card, SearchResult } from './types';
 import * as CodeMirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/base16-light.css';
 import 'codemirror/mode/gfm/gfm';
 import { AppEvent } from './event';
 
-function tagsHtml(tags: string[]): string {
-    return tags.map((tag) => `<a href="#/${tag}.md" class="card__tag">${tag}</a>`).join(' ');
-}
-
 function cardHtml(card: Card): string {
-    const subtitle = card.subtitle ? `<div class="card__subtitle">${card.subtitle}</div>` : '';
-    const tags = card.tags.length > 0 ? `<div class="card__tags">${tagsHtml(card.tags)}</div>` : '';
-    const url = card.url?.startsWith('https://') || card.url?.startsWith('http://') ? card.url : '#/' + card.url;
-    const linkAttr =
-        card.url?.startsWith('https://') || card.url?.startsWith('http://')
-            ? 'target="_blank" rel="noreferrer noopener"'
-            : '';
-    const showLink = url.startsWith('#/') ? '' : `<a href="#/${card.filename}" class="card__show">show</a>`;
     return `
         <div class="card">
             <div class="card__header">
-                <a class="card__title" href="${url}" ${linkAttr}>
+                <a class="card__title" href="#/${card.filename}">
                     ${card.title}
                 </a>
-                <a class="card__edit" href="#/${card.filename}?edit">edit</a>
-                ${showLink}
-                ${subtitle}
-                ${tags}
             </div>
-            ${card.content
-                .filter((content) => !!content)
-                .map((content) => `<div class="card__content">${content}</div>`)}
+            <div class="card__content">${card.content}</div>
         </div>
     `;
 }
@@ -65,6 +47,7 @@ export function mountView(
         <div class="app app--highlighting">
             <div class="header">
                 <a href="/#/">🏠</a>
+                <a href="/#/${new Date().toJSON().substring(0, 10)}.md">📅</a>
                 <a href="/#/_index.md">📁</a>
                 <a href="/#/?edit" id="edit-link">✏️</a>
                 <button id="save-link" class="hidden">💾</button>

@@ -1,3 +1,7 @@
+export function disjoint<T>(a: Set<T>, b: Set<T>): boolean {
+    return [...a].every((x) => !b.has(x));
+}
+
 export function notUndefined<T>(x: T | undefined): x is T {
     return x !== undefined;
 }
@@ -68,8 +72,4 @@ export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
 
 export function assertNever(_x: never): never {
     throw new Error('Assert never');
-}
-
-export function curry<Arg1, Arg2, Res>(fn: (arg1: Arg1, arg2: Arg2) => Res): (arg1: Arg1) => (arg2: Arg2) => Res {
-    return (arg1: Arg1): ((arg: Arg2) => Res) => (arg2: Arg2): Res => fn(arg1, arg2);
 }

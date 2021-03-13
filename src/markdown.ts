@@ -1,11 +1,11 @@
 import * as MarkdownIt from 'markdown-it';
-import * as Token from 'markdown-it/lib/token';
+import * as MdToken from 'markdown-it/lib/token';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
 import { memoize, urlize } from './util';
 
 const links: MarkdownIt.PluginSimple = (md): void => {
     md.core.ruler.push('notaza_links', (state): boolean => {
-        const fn = (token: Token): void => {
+        const fn = (token: MdToken): void => {
             if (token.children !== null) {
                 token.children.map(fn);
             }
@@ -56,19 +56,19 @@ const hashtags: MarkdownIt.PluginSimple = (md): void => {
                             const tagName = match.split('#', 2)[1];
                             const pos = text.indexOf('#' + tagName, text.indexOf(match));
                             if (pos > 0) {
-                                const leadingTextToken = new Token('text', '', 0);
+                                const leadingTextToken = new MdToken('text', '', 0);
                                 leadingTextToken.content = text.slice(0, pos);
                                 leadingTextToken.level = token.level;
                                 nodes.push(leadingTextToken);
                             }
-                            const hashtagToken = new Token('hashtag', '', 0);
+                            const hashtagToken = new MdToken('hashtag', '', 0);
                             hashtagToken.content = tagName;
                             hashtagToken.level = token.level;
                             nodes.push(hashtagToken);
                             text = text.slice(pos + 1 + tagName.length);
                         }
                         if (text.length > 0) {
-                            const followingTextToken = new Token('text', '', 0);
+                            const followingTextToken = new MdToken('text', '', 0);
                             followingTextToken.content = text;
                             followingTextToken.level = token.level;
                             nodes.push(followingTextToken);
@@ -112,19 +112,19 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
                             const title = match.split('[[', 2)[1].split(']]', 2)[0];
                             const pos = text.indexOf('[[' + title + ']]', text.indexOf(match));
                             if (pos > 0) {
-                                const leadingTextToken = new Token('text', '', 0);
+                                const leadingTextToken = new MdToken('text', '', 0);
                                 leadingTextToken.content = text.slice(0, pos);
                                 leadingTextToken.level = token.level;
                                 nodes.push(leadingTextToken);
                             }
-                            const wikilinkToken = new Token('wikilink', '', 0);
+                            const wikilinkToken = new MdToken('wikilink', '', 0);
                             wikilinkToken.content = title;
                             wikilinkToken.level = token.level;
                             nodes.push(wikilinkToken);
                             text = text.slice(pos + 2 + title.length + 2);
                         }
                         if (text.length > 0) {
-                            const followingTextToken = new Token('text', '', 0);
+                            const followingTextToken = new MdToken('text', '', 0);
                             followingTextToken.content = text;
                             followingTextToken.level = token.level;
                             nodes.push(followingTextToken);
@@ -141,23 +141,8 @@ const wikilinks: MarkdownIt.PluginSimple = (md): void => {
         `<a class="internal" href="/#/${urlize(tokens[index].content)}.md">${tokens[index].content}</a>`;
 };
 
-const tweetsAndBookmarks: MarkdownIt.PluginSimple = (md): void => {
-    const originalFenceRenderer = md.renderer.rules.fence;
-    md.renderer.rules.fence = (tokens, idx, options, env, self): string => {
-        const token = tokens[idx];
-        if (token.info.trim() === 'tweet') {
-            return '';
-        } else if (token.info.trim() === 'bookmark') {
-            return '';
-        } else if (originalFenceRenderer) {
-            return originalFenceRenderer(tokens, idx, options, env, self);
-        } else {
-            return self.renderToken(tokens, idx, options);
-        }
-    };
-};
-
-const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks).use(tweetsAndBookmarks);
+const mdIt = MarkdownIt({ html: true, linkify: true }).use(links).use(hashtags).use(wikilinks);
+export type Token = MdToken;
 interface NotazaMd {
     render: (markdown: string) => string;
     parse: (markdown: string) => Token[];
@@ -169,4 +154,38 @@ export function notazamd(): NotazaMd {
         parse: memoize((markdown): Token[] => mdIt.parse(markdown, {})),
         renderTokens: (tokens): string => mdIt.renderer.render(tokens, {}, {}),
     };
+}
+
+export const getReferences = memoize(
+    (input: string | Token[]): Set<string> => {
+        const inputTokens = typeof input === 'string' ? notazamd().parse(input) : input;
+        const tokens = inputTokens.flatMap((token) => [token, ...(token.children ?? [])]);
+        const references = new Set<string>();
+        for (const token of tokens) {
+            if (token.type === 'link_open') {
+                const href = token.attrGet('href');
+                const id = (href ?? '').replace('.md', '').replace('./', '').replace('/#/', '');
+                if (id && !id.startsWith('http://') && !id.startsWith('https://')) {
+                    references.add(id);
+                }
+            } else if (token.type === 'hashtag') {
+                references.add(token.content);
+            } else if (token.type === 'wikilink') {
+                references.add(urlize(token.content));
+            }
+        }
+        return references;
+    },
+);
+
+interface Fence {
+    readonly info: string;
+    readonly content: string;
+}
+
+export function getFences(md: string): Fence[] {
+    return notazamd()
+        .parse(md)
+        .filter((token) => token.type === 'fence')
+        .map((token) => ({ info: token.info.trim(), content: token.content }));
 }
