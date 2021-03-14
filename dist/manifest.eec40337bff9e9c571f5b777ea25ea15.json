@@ -1,0 +1,42 @@
+{
+  "icons": [
+    {
+      "src": "icon_512x512.68a9db51e52169019ecadeabcc4f8590.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_384x384.00f10c753c4d7ed427c7f343b91c92c9.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_256x256.3a86faec9bf9fbdecdbab31cd802257c.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_192x192.ac7529969dac99e425f1322f7617d611.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_128x128.f9719b8b11a4a303cb760aedd3a640c7.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_96x96.778d580fae02874d2eb031b92969de94.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    }
+  ],
+  "name": "Notaza",
+  "short_name": "Notaza",
+  "orientation": "portrait",
+  "display": "standalone",
+  "start_url": ".",
+  "description": "Notaza Knowledge Base",
+  "background_color": "#eee",
+  "theme_color": "#eee"
+}
