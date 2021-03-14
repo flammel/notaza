@@ -1,7 +1,7 @@
 import { ApiFiles } from './api';
 import { Token, notazamd, getReferences, getFences } from './markdown';
 import { Card, IndexEntry, SearchResult, Store } from './types';
-import { notUndefined, withoutExtension, disjoint, urlize } from './util';
+import { notUndefined, withoutExtension, disjoint, urlize, titleize } from './util';
 
 type FrontMatter = Record<string, string | undefined>;
 
@@ -62,7 +62,7 @@ export function makeStore(files: ApiFiles, mdRenderer: MarkdownRenderer): Store 
             pages.set(filename, makePage(filename, content, notazamd().parse));
         },
         rawContent(filename: string): string {
-            return pages.get(filename)?.raw ?? `---\ntitle: \n---\n`;
+            return pages.get(filename)?.raw ?? `---\ntitle: ${titleize(filename.slice(0, -3))}\n---\n`;
         },
     };
 }

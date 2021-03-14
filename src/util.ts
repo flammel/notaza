@@ -56,6 +56,13 @@ export function urlize(str: string): string {
         .replace(/[^a-z0-9-]/g, '');
 }
 
+export function titleize(str: string): string {
+    if (str.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/)) {
+        return str;
+    }
+    return str.split('-').map((part) => part.charAt(0).toUpperCase() + part.substring(1)).join(' ');
+}
+
 export function memoize<I, O>(fn: (x: I) => O): (x: I) => O {
     const cache = new Map<I, O>();
     return (x: I): O => {
